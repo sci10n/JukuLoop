@@ -134,11 +134,64 @@
 
 </script>
 
+<style>
+    :global(body) {
+        background: #22221f;
+        color: white;
+    }
+
+    table {
+        width: 100%;
+        background: #2c2b29;
+        box-shadow: .3rem .3rem .36rem #1c1c1c;
+        border-radius: 1em;
+        margin-top: 1%;
+        margin-left: auto;
+        margin-right: auto;
+        padding-top: 1em;
+        padding-bottom: 1em;
+    }
+
+    td {
+        padding: 0.5em;
+    }
+
+    input[type="text"] {
+        padding-left: 1em;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 1em;
+
+        border-style: solid;
+        border-radius: 5em;
+        background: #e8e8e8;
+
+        padding-top: 0.5em;
+        padding-bottom: 0.5em;
+    }
+
+    button {
+        padding-top: 0.5em;
+        padding-bottom: 0.5em;
+    }
+
+    ruby {
+        font-size: 1.3em;
+    }
+
+    .reading {
+        text-align: center;
+        color: #94f77e;
+        font-size: 1.2em;
+    }
+
+</style>
+
 <h2>Stored Sentences</h2>
 <table>
     {#each $sentenceStore as sentence}
         <tr>
-            <td>
+            <td class="reading">
                 {#each sentence.reading as reading, index}
                     {#if sentence.furigana[index]}
                         <ruby>{reading}
