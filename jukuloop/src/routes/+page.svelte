@@ -165,7 +165,7 @@
                     reading: ["私", "は", "学生", "です"],
                     furigana: ["わたし", "", "がくせい", ""],
                     translation: "I am a student",
-                    note: "This is a note",
+                    note: "This is a note (go to /data to configure sentences)",
                     hint: "This is a hint"
                 }
             ])
