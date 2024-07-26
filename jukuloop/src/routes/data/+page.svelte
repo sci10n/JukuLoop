@@ -185,10 +185,34 @@
         font-size: 1.2em;
     }
 
+    .centered {
+        text-align: center;
+    }
+
 </style>
 
 <h2>Stored Sentences</h2>
 <table>
+<tr>
+    <td class="centered">
+        <h3>Formatted Sentence</h3>
+    </td>
+    <td>
+        <h3>Raw Sentence (with Furigana)</h3>
+    </td>
+    <td>
+        <h3>English Translation</h3>
+    </td>
+    <td>
+        <h3>Additional Notes</h3>
+    </td>
+    <td>
+        <h3>Hint for Sentence</h3>
+    </td>
+    <td>
+        <h3>Actions</h3>
+    </td>
+</tr>
     {#each $sentenceStore as sentence}
         <tr>
             <td class="reading">
