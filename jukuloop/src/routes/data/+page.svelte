@@ -4,7 +4,6 @@
     import {onMount} from "svelte";
     import * as wanakana from 'wanakana';
 
-
     let sentenceStore = writable([]);
 
     const convertToKana = (romaji: string) => wanakana.toKana(romaji, {IMEMode: true});
@@ -13,10 +12,12 @@
     const addSentence = () => {
         sentenceStore.update(sentences => {
             const newSentence = {
-                raw: "",
-                reading: [],
-                furigana: [],
-                translation: "",
+                raw: "私（わたし）は学生（がくせい）です",
+                reading: ["私", "は", "学生", "です"],
+                furigana: ["わたし", "", "がくせい", ""],
+                translation: "I am a student",
+                note: "This is a note and will be shown with the answer.",
+                hint: "This is a hint and will be shown with the question."
             }
             const updated = [...sentences, newSentence]
             localStorage.setItem('sentences', JSON.stringify(updated))
