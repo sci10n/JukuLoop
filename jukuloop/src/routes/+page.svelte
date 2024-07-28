@@ -3,12 +3,12 @@
     import {type Deck, placeholderSentence, type Sentence} from "../types/Sentence";
     import {onMount} from "svelte";
     import Review from "./Review.svelte";
-    import type {SRS} from "../types/Srs";
+    import {pick_sentences, type SRS} from "../types/Srs";
 
     let decksStore: Deck[] = []
     let selectedDeck: Deck | null
 
-
+    $: reviewsInDeck = decksStore.map(deck => pick_sentences(deck).length)
     $: showCreateDeck = decksStore.length === 0
     $: showDecksView = decksStore.length > 0 && selectedDeck === null
     $: showReviewView = selectedDeck !== null
@@ -20,13 +20,13 @@
         const deckIndex = decksStore.findIndex(deck => deck === _currentDeck)
         const sentenceIndex = _currentDeck.sentences.findIndex(sentence => sentence === _currentSentence)
 
-        deckIndex !== -1 && sentenceIndex !== -1 && console.log(_currentDeck.sentences[sentenceIndex])
         if (deckIndex !== -1) {
             if (sentenceIndex !== -1) {
                 _currentDeck.sentences[sentenceIndex] = {
                     ..._currentSentence,
                     srs: new_srs
                 }
+                console.log("Saving deck")
                 decksStore[deckIndex] = _currentDeck
             }
         }
@@ -57,9 +57,9 @@
     {#if showReviewView}
         <form>
             <label for="decks">Choose a deck:</label>
-            <select name="decks" id="decks" bind:value={selectedDeck} on:change={ () => console.log(selectedDeck) }>
+            <select name="decks" id="decks" bind:value={selectedDeck}>
                 {#each decksStore as deck, i}
-                    <option value={deck}>{deck.name}</option>
+                    <option value={deck}>{deck.name} ({reviewsInDeck[i]})</option>
                 {/each}
             </select>
         </form>
@@ -70,10 +70,9 @@
             <div class="pick-decks-container">
                 <h1>Choose a deck</h1>
                 <form>
-                    <select name="decks" id="decks" bind:value={selectedDeck}
-                            on:change={ () => console.log(selectedDeck) }>
+                    <select name="decks" id="decks" bind:value={selectedDeck}>
                         {#each decksStore as deck, i}
-                            <option value={deck}>{deck.name}</option>
+                            <option value={deck}>{deck.name} ({reviewsInDeck[i]})</option>
                         {/each}
                     </select>
                 </form>

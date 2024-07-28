@@ -20,6 +20,7 @@
 
     const updateDeck = (deck: Deck, index: number) => {
         decks[index] = deck
+        saveDecks()
     }
 
     onMount(() => {
@@ -30,15 +31,14 @@
 </script>
 
 <style>
-        :global(body) {
+    :global(body) {
         background: #22221f;
         color: white;
     }
 </style>
 <div class="container">
     <h1>Decks</h1>
-      <button on:click={addDeck}>Add Deck</button>
-                    <button on:click={saveDecks}>Save Decks</button>
+    <button on:click={addDeck}>Add Deck</button>
     <div class="decks">
         {#each decks as deck, i}
             <DeckTable deck={deck} editable={true}

@@ -4,8 +4,12 @@
     import type {Deck, Sentence} from "../types/Sentence";
     import ColoredReading from "../components/ColoredReading.svelte";
     import {type AnswerCorrectness, calculateCorrectness} from "./state";
-    import {adjust_srs, pick_sentences} from "../types/Srs";
+    import {adjust_srs, pick_sentences, Stage} from "../types/Srs";
     import {createEventDispatcher, onMount} from "svelte";
+    import {base} from "$app/paths";
+    import SrsPopup from "../components/SrsPopup.svelte";
+    import SrsStage from "../components/SrsStage.svelte";
+    import {cleanupInput} from "../utils/misc";
 
     export let selectedDeck: Deck | null = null
 
@@ -18,15 +22,24 @@
     let invalidInput = false
     let notification = ""
 
+    let showPopup = false;
+    let newSrsLevel: Stage;
+
+    let hasAdjustedSrs = false
 
     $: selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
     $: if(selectedDeck) {
-        selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
         pickSentence()
     }
 
     const pickSentence = () => {
         if (selectedSentences.length > 0) {
+            selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
+            console.log("Number of sentences: " + selectedSentences.length)
+            if(selectedSentences.length === 0) {
+                currentSentence = null
+                return
+            }
             currentSentence = selectedSentences[Math.floor(Math.random() * selectedSentences.length)]
         }
 
@@ -43,8 +56,10 @@
         answerLockedIn = true
 
         const srs = currentSentence?.srs
-        if(srs) {
+        if(srs && !hasAdjustedSrs) {
             const new_srs = adjust_srs(srs, answerCorrect)
+            newSrsLevel = new_srs.stage
+            showPopup = true
             dispatch('srs', {
                 sentence: currentSentence,
                 srs: new_srs
@@ -57,12 +72,22 @@
     }
 
     const validateInput = (input: string) => {
+        if(input === "") {
+            invalidInput = true
+            notification = "Input cannot be empty!"
+            return
+        }
+
         const invalidChars = /[a-zA-Z0-9]/;
         invalidInput = invalidChars.test(input)
         notification = invalidInput ? "Invalid characters in input!" : ""
     }
 
     let currentSentence: Sentence | null = null
+
+    $: if(currentSentence) {
+        hasAdjustedSrs = false
+    }
 
     $: answerCorrectness = currentSentence && calculateCorrectness(currentSentence, currentAnswer) as AnswerCorrectness
     $: answerColors = answerCorrectness && answerCorrectness.answerCorrectness.map((correct) => correct ? '#94f77e' : '#f25f44')
@@ -73,7 +98,7 @@
         kanjiInputField.value = ""
         kanjiInputField && wanakana.bind(kanjiInputField)
         kanjiInputField.addEventListener('input', (event) => {
-            currentAnswer = (event.target as HTMLInputElement).value
+            currentAnswer = cleanupInput((event.target as HTMLInputElement).value)
         })
         focusInput()
     }
@@ -87,7 +112,6 @@
                 if (invalidInput) {
                     return
                 }
-
                 if (selectedDeck && currentSentence && answerLockedIn) {
                     resetAnswer()
                     pickSentence()
@@ -100,6 +124,12 @@
 
 </script>
 
+{#if currentSentence === null}
+    <h1>No sentences to review</h1>
+    <p class="centered">Try adding some sentences to the deck or select a different deck</p>
+    <p><a href={`${base}/decks`}>Manage Decks</a></p>
+{/if}
+
 {#if currentSentence}
     <h1>{currentSentence.translation}</h1>
 
@@ -107,6 +137,9 @@
         <p>{currentSentence.hint}</p>
     </div>
 
+    {#if showPopup}
+        <SrsPopup stage={newSrsLevel} on:hide={() => showPopup = false} />
+    {/if}
     <div class="input-container">
         <input type="text" bind:this={kanjiInputField}/>
     </div>
@@ -145,6 +178,9 @@
 {/if}
 
 <style>
+    .centered {
+        text-align: center;
+    }
     h1 {
         color: white;
         text-align: center;

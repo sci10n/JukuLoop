@@ -30,7 +30,6 @@ export const calculateCorrectness = (sentence: ReadingAndFurigana, answer: strin
     const answersCorrect = answerCorrectness.every((correct) => correct)
     const readingsCorrect = readingCorrectness.every((correct) => correct)
     const lengthCorrect = answer.length === expectedAnswer.expectedAnswer.length
-
     return {
         readingCorrectness: readingCorrectness,
         answerCorrectness: answerCorrectness,
@@ -46,8 +45,11 @@ const getExpectedAnswer = (useKanji: boolean, sentence: ReadingAndFurigana): Exp
         const reading = sentence.reading[i]
 
         if (useKanji) {
-            result.push(reading)
-            readingMapping.push(i)
+            reading.split("")
+                .forEach((readingPart, index) => {
+                result.push(readingPart)
+                readingMapping.push(i)
+            })
         } else {
             const reading2 = furigana === "" ? reading : furigana
             reading2.split("").forEach((readingPart, index) => {
