@@ -1,3 +1,5 @@
+import * as wanakana from "wanakana";
+
 export function convertToFuriganaFormat(inputString: string): { reading: string[], furigana: string[] } {
     // Adjusted regex to capture kanji with furigana and non-kanji characters
     const regex = /([\u3400-\u9FAF]+)[(（](.+?)[)）]|([^\u3400-\u9FAF]+)/g;
@@ -15,7 +17,20 @@ export function convertToFuriganaFormat(inputString: string): { reading: string[
         }
     }
 
-    return { reading, furigana };
+    // Split Kana into individual characters
+    const result = reading.map((reading, index) => {
+        if (wanakana.isKana(reading)) {
+            const newParts = reading.split("")
+            return newParts.map((part) => {
+                return {reading: part, furigana: ""}
+            })
+        }
+        return [{reading: reading, furigana: furigana[index]}]
+    })
+
+    const new_reading =  result.flat().map((part) => part.reading)
+    const new_furigana = result.flat().map((part) => part.furigana)
+    return {reading: new_reading, furigana: new_furigana}
 }
 
 // Example usage

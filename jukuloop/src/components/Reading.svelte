@@ -8,7 +8,7 @@
 <style>
     ruby {
         color: var(--reading-color, black);
-        font-size: 1.5em;
+        font-size: var(--reading-font-size, 1.5em);
     }
 </style>
 

@@ -210,6 +210,9 @@
         <h3>Hint for Sentence</h3>
     </td>
     <td>
+        <h3>SRS Stage</h3>
+    </td>
+    <td>
         <h3>Actions</h3>
     </td>
 </tr>
@@ -246,6 +249,9 @@
                 <input type="text" bind:value={sentence.hint}
                        on:blur={(event) => updateHint(sentence.raw, event.target.value)}
                 />
+            </td>
+            <td>
+                <input type="text" bind:value={sentence?.srs.stage} disabled="disabled" />
             </td>
             <td>
                 <button on:click={() => {
