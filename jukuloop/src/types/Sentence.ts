@@ -20,8 +20,8 @@ export interface Deck {
 
 export const placeholderSentence: Sentence = {
     raw: "私（わたし）は学生（がくせい）です",
-    reading: ["私", "は", "学生", "です"],
-    furigana: ["わたし", "", "がくせい", ""],
+    reading: ["私", "は", "学生", "で", "す"],
+    furigana: ["わたし", "", "がくせい", "", ""],
     translation: "I am a student",
     note: "This is a note and will be shown with the answer.",
     hint: "This is a hint and will be shown with the question.",

@@ -1,6 +1,6 @@
 <script lang="ts">
-
-    import type {Deck, Sentence} from "../types/Sentence";
+    import { base } from '$app/paths';
+    import {type Deck, placeholderSentence, type Sentence} from "../types/Sentence";
     import {onMount} from "svelte";
     import Review from "./Review.svelte";
     import type {SRS} from "../types/Srs";
@@ -10,7 +10,7 @@
 
 
     $: showCreateDeck = decksStore.length === 0
-    $: showDecksView = decksStore.length > 0
+    $: showDecksView = decksStore.length > 0 && selectedDeck === null
     $: showReviewView = selectedDeck !== null
 
     const saveDecks = (sentence: Sentence, new_srs: SRS) => {
@@ -20,7 +20,6 @@
         const deckIndex = decksStore.findIndex(deck => deck === _currentDeck)
         const sentenceIndex = _currentDeck.sentences.findIndex(sentence => sentence === _currentSentence)
 
-        console.log(deckIndex, sentenceIndex)
         deckIndex !== -1 && sentenceIndex !== -1 && console.log(_currentDeck.sentences[sentenceIndex])
         if (deckIndex !== -1) {
             if (sentenceIndex !== -1) {
@@ -39,30 +38,51 @@
         if (storedDecks) {
             decksStore = JSON.parse(storedDecks)
         }
+
+        if (!storedDecks || decksStore.length == 0) {
+            decksStore = [
+                {
+                    name: "Default Deck",
+                    description: "This is a default deck",
+                    sentences: [
+                        placeholderSentence
+                    ]
+                }
+            ]
+        }
     })
 </script>
 
 <div class="page">
+    {#if showReviewView}
+        <form>
+            <label for="decks">Choose a deck:</label>
+            <select name="decks" id="decks" bind:value={selectedDeck} on:change={ () => console.log(selectedDeck) }>
+                {#each decksStore as deck, i}
+                    <option value={deck}>{deck.name}</option>
+                {/each}
+            </select>
+        </form>
+        <p><a href={`${base}/decks`}>Manage Decks</a></p>
+    {/if}
     <div class="container">
-        {#if showCreateDeck}
-            <h1>No Decks</h1>
-            <p>Create a deck by going to <a href="/deck">/deck</a></p>
+        {#if showDecksView }
+            <div class="pick-decks-container">
+                <h1>Choose a deck</h1>
+                <form>
+                    <select name="decks" id="decks" bind:value={selectedDeck}
+                            on:change={ () => console.log(selectedDeck) }>
+                        {#each decksStore as deck, i}
+                            <option value={deck}>{deck.name}</option>
+                        {/each}
+                    </select>
+                </form>
+            </div>
         {/if}
-        {#if showDecksView || showReviewView}
-            <form>
-                <label for="decks">Choose a deck:</label>
-                <select name="decks" id="decks" bind:value={selectedDeck} on:change={ () => console.log(selectedDeck) }>
-                    {#each decksStore as deck, i}
-                        <option value={deck}>{deck.name}</option>
-                    {/each}
-                </select>
-            </form>
-
-            {#if showReviewView}
-                <Review bind:selectedDeck={selectedDeck} on:srs={(event) => {
+        {#if showReviewView}
+            <Review bind:selectedDeck={selectedDeck} on:srs={(event) => {
                     saveDecks(event.detail.sentence, event.detail.srs)
                 }}/>
-            {/if}
         {/if}
     </div>
 </div>
@@ -89,6 +109,25 @@
         margin-right: auto;
         padding-top: 1em;
         padding-bottom: 1em;
+    }
+
+    .pick-decks-container {
+        text-align: center;
+    }
+
+    .pick-decks-container select {
+        margin-left: auto;
+        margin-right: auto;
+
+        width: 50%;
+        border-style: solid;
+        border-radius: 5em;
+        border-color: var(--border-color, black);
+        background: var(--background-color, white);
+        color: var(--font-color, black);
+        font-size: 1.0em;
+        margin-bottom: 1em;
+
     }
 
 

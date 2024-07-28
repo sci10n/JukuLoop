@@ -59,8 +59,7 @@ export const adjust_srs = (srs: SRS, correct: boolean): SRS => {
 }
 
 export const pick_sentences = (deck: Deck, now: Date = new Date()): Sentence[] => {
-    //  new Date(sentence.srs!.nextReview) < now &&
-    const next = deck.sentences.filter(sentence => sentence.srs?.stage !== Stage.Burned)
+    const next = deck.sentences.filter(sentence => new Date(sentence.srs!.nextReview) < now && sentence.srs?.stage !== Stage.Burned)
     return next
 }
 

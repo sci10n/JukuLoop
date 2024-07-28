@@ -20,6 +20,10 @@
 
 
     $: selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
+    $: if(selectedDeck) {
+        selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
+        pickSentence()
+    }
 
     const pickSentence = () => {
         if (selectedSentences.length > 0) {
@@ -55,8 +59,6 @@
     const validateInput = (input: string) => {
         const invalidChars = /[a-zA-Z0-9]/;
         invalidInput = invalidChars.test(input)
-        console.log("invalidInput", invalidInput)
-        console.log("input", input)
         notification = invalidInput ? "Invalid characters in input!" : ""
     }
 
@@ -100,6 +102,10 @@
 
 {#if currentSentence}
     <h1>{currentSentence.translation}</h1>
+
+    <div class="hint-container">
+        <p>{currentSentence.hint}</p>
+    </div>
 
     <div class="input-container">
         <input type="text" bind:this={kanjiInputField}/>
@@ -176,6 +182,11 @@
 
     .result-container {
         text-align: center;
+    }
+
+    .hint-container {
+        text-align: center;
+        margin-top: 0.5em;
     }
 
     .note-container {
