@@ -251,7 +251,7 @@
                 />
             </td>
             <td>
-                <input type="text" bind:value={sentence?.srs.stage} disabled="disabled" />
+                <input type="text" bind:value={sentence.srs.stage} disabled="disabled" />
             </td>
             <td>
                 <button on:click={() => {
