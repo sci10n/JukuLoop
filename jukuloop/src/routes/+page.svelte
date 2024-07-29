@@ -1,14 +1,16 @@
 <script lang="ts">
-    import { base } from '$app/paths';
+    import {base} from '$app/paths';
     import {type Deck, placeholderSentence, type Sentence} from "../types/Sentence";
     import {onMount} from "svelte";
-    import Review from "./Review.svelte";
     import {pick_sentences, type SRS} from "../types/Srs";
+    import ReviewDeck from "../views/ReviewDeckView.svelte";
 
     let decksStore: Deck[] = []
     let selectedDeck: Deck | null
 
     $: reviewsInDeck = decksStore.map(deck => pick_sentences(deck).length)
+    $: sentencesInDeck = decksStore.map(deck => deck.sentences.length)
+
     $: showCreateDeck = decksStore.length === 0
     $: showDecksView = decksStore.length > 0 && selectedDeck === null
     $: showReviewView = selectedDeck !== null
@@ -42,6 +44,7 @@
         if (!storedDecks || decksStore.length == 0) {
             decksStore = [
                 {
+                    id: "placeholder",
                     name: "Default Deck",
                     description: "This is a default deck",
                     sentences: [
@@ -72,14 +75,14 @@
                 <form>
                     <select name="decks" id="decks" bind:value={selectedDeck}>
                         {#each decksStore as deck, i}
-                            <option value={deck}>{deck.name} ({reviewsInDeck[i]})</option>
+                            <option value={deck}>{deck.name}  ({reviewsInDeck[i]}/{sentencesInDeck[i]})</option>
                         {/each}
                     </select>
                 </form>
             </div>
         {/if}
         {#if showReviewView}
-            <Review bind:selectedDeck={selectedDeck} on:srs={(event) => {
+            <ReviewDeck bind:selectedDeck={selectedDeck} on:srs={(event) => {
                     saveDecks(event.detail.sentence, event.detail.srs)
                 }}/>
         {/if}
@@ -88,9 +91,9 @@
 
 <style>
     :global(body) {
-        background: #22221f;
-        color: white;
-    }
+        background: #fdfbfb;
+        color:black
+        }
 
     h1 {
         color: white;
@@ -99,8 +102,7 @@
     }
 
     .container {
-        width: 600px;
-        background: #2c2b29;
+        background: #302f2f;
         box-shadow: .3rem .3rem .36rem #1c1c1c;
         border-radius: 1em;
         margin-top: 10%;
@@ -108,6 +110,18 @@
         margin-right: auto;
         padding-top: 1em;
         padding-bottom: 1em;
+    }
+
+    @media (min-width: 1200px) {
+        .container {
+            width: 800px;
+        }
+    }
+
+    @media (max-width: 767px) {
+        .container {
+            width: 90%;
+        }
     }
 
     .pick-decks-container {

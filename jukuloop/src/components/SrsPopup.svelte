@@ -6,14 +6,15 @@
 
     const dispatch = createEventDispatcher()
     export let stage: Stage
+    export let animateUp: boolean = false
 
     const hidePopup = () => {
         dispatch('hide')
     }
 
-    setTimeout(hidePopup, 2000)
+    setTimeout(hidePopup, 1000)
 </script>
-<div class="popup" transition:fade>
+<div class="popup" transition:fly={animateUp ? { y: 50} : { y: -50}}>
     <p style="color: {stage_color(stage)}">
         {stage_name(stage)}
     </p>
@@ -22,7 +23,7 @@
 <style>
     .popup {
         position: absolute;
-        bottom: 50%; /* Position above the input field */
+        top: 40%;
         left: 50%;
         transform: translateX(-50%);
         background-color: #333;

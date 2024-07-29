@@ -7,6 +7,8 @@
     import {createEventDispatcher} from "svelte";
     import SrsStage from "./SrsStage.svelte";
     import KanjiInput from "./KanjiInput.svelte";
+    import {stages} from "../types/Srs";
+    import {stage_name} from "../utils/srs";
 
     export let editable: boolean = false
     export let deck: Deck
@@ -18,6 +20,14 @@
 
     const deleteDeck = () => {
         dispatch("delete")
+    }
+
+    let sentenceEditing = false
+    let sentenceIndex = -1
+
+    const editSentence = (index: number) => {
+        sentenceEditing = true
+        sentenceIndex = index
     }
 
     const updateName = (name: string) => {
@@ -78,9 +88,8 @@
 
 <style>
     .container {
+        background: white;
         width: 100%;
-        background: #2c2b29;
-        box-shadow: .3rem .3rem .36rem #1c1c1c;
         border-radius: 1em;
         margin-left: auto;
         margin-top: 1em;
@@ -88,161 +97,154 @@
         padding-top: 1em;
         padding-bottom: 1em;
     }
-    .deck-table {
+
+    table {
         width: 100%;
-        margin-left: auto;
-        margin-top: 1em;
-        margin-right: auto;
-        padding-top: 1em;
-        padding-bottom: 1em;
+        border-collapse: collapse;
     }
 
-    .deck-table th, .deck-table td {
-        border: 1px solid var(--border-color, #ddd);
+    th, td {
+        border: 1px solid #ddd;
         padding: 8px;
-        height: 10px; /* Set a fixed height */
-
     }
 
-    .deck-table th {
-        background-color: var(--background-color, #ddd);
+    th {
+        background-color: #f2f2f2;
         text-align: left;
     }
 
-    .reading {
-        font-size: 1em;
-        overflow-x: scroll;
-        width: 15%;
+    button {
+        background-color: #cdcdcd;
+        color: black;
+        border: none;
+        border-radius: 0;
+        padding: 10px 20px;
+        margin: 5px;
+        cursor: pointer;
     }
 
-    .srs-container {
-        width: 15%;
+    button:hover {
+        background-color: #f3f3f3;
     }
 
-    input {
-        border-style: solid;
-        border-color: var(--border-color, #ddd);
-        background: var(--deck-color, #ddd);
-        color: white;
-    }
-
-    textarea {
-        border-style: solid;
-        border-color: var(--border-color, #ddd);
-        background: var(--deck-color, #ddd);
-        color: white;
-
-        overflow: clip;
-        resize: none;
-        height: 50px;
-        width: 100%;
-    }
-
-    @media screen and (max-width: 768px) {
-        .deck-table, .deck-table thead, .deck-table tbody, .deck-table th, .deck-table td, .deck-table tr {
-            display: block;
-        }
-
-        .deck-table tr {
-            margin-bottom: 15px;
-        }
-
-        .deck-table td {
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-        }
-
-        .deck-table td::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 0;
-            width: 50%;
-            padding-left: 10px;
-            font-weight: bold;
-            text-align: left;
-        }
-
-        .deck-table th {
-            display: none;
-        }
+    button:disabled {
+        background-color: #888;
+        cursor: not-allowed;
     }
 </style>
 
 <div class="container">
-    <input bind:value={deck.name} disabled={!editable} class="title"/>
-    <input bind:value={deck.description} disabled={!editable} class="description"/>
+    {#if sentenceEditing}
+        <div class="sentence-container">
+            <table class="deck-table">
+                <colgroup>
+                    <col class="raw"/>
+                    <col class="translation"/>
+                    <col class="note"/>
+                    <col class="hint"/>
+                    <col class="srs"/>
+                    <col class="actions"/>
+                </colgroup>
+                <thead>
+                <tr>
+                    <th>Sentence</th>
+                    <th>Translation</th>
+                    <th>Notes</th>
+                    <th>Hint</th>
+                    <th>SRS Stage</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>
+                        <KanjiInput value={deck.sentences[sentenceIndex].raw}
+                                    on:input={e => updateRaw(e.detail, sentenceIndex) }/>
+                    </td>
+                    <td>
+                        <input bind:value={deck.sentences[sentenceIndex].translation}
+                               on:input={e => updateTranslation(e.target.value, sentenceIndex)}/>
+                    </td>
+                    <td>
+                        <input bind:value={deck.sentences[sentenceIndex].note}
+                               on:input={e => updateNote(e.target.value, sentenceIndex)}/>
+                    </td>
+                    <td>
+                        <input bind:value={deck.sentences[sentenceIndex].hint}
+                               on:input={e => updateHint(e.target.value, sentenceIndex)}/>
+                    </td>
+                    <td>
+                        <select bind:value={deck.sentences[sentenceIndex].srs.stage}>
+                            {#each stages as stage}
+                                <option value={stage}> {stage_name(stage)} </option>
+                            {/each}
+                        </select>
+                    </td>
+                    <td>
+                        <button on:click={() => {deleteSentence(sentenceIndex); sentenceEditing = false}}>Delete
+                            Sentence
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            <br>
+            <ColoredReading readings={deck.sentences[sentenceIndex].reading}
+                            furigana={deck.sentences[sentenceIndex].furigana}
+                            colors={deck.sentences[sentenceIndex].reading.map(it => "black")}/>
 
-    <button on:click={deleteDeck} disabled={!editable} >Delete Deck </button>
+        </div>
+    {/if}
+    {#if !sentenceEditing}
+        <input bind:value={deck.name} disabled={!editable} class="title"/>
+        <input bind:value={deck.description} disabled={!editable} class="description"/>
 
-    <table class="deck-table">
-        <colgroup>
-            <col class="reading"/>
-            <col class="raw"/>
-            <col class="translation"/>
-            <col class="note"/>
-            <col class="hint"/>
-            <col class="srs"/>
-            <col class="actions"/>
-        </colgroup>
-        <thead>
-        <tr>
-            <th>Sentence</th>
-            <th>Raw</th>
-            <th>Translation</th>
-            <th>Notes</th>
-            <th>Hint</th>
-            <th>SRS Stage</th>
-            <th>Actions</th>
-        </tr>
-        </thead>
-        <tbody>
-        {#each deck.sentences as sentence, i}
+        <button on:click={addSentence} disabled={!editable}>Add Sentence</button>
+        <table class="deck-table">
+            <colgroup>
+                <col class="reading"/>
+                <col class="translation"/>
+                <col class="note"/>
+                <col class="hint"/>
+                <col class="srs"/>
+                <col class="actions"/>
+            </colgroup>
+            <thead>
             <tr>
-                <td class="reading" data-label="Sentence">
-                    <ColoredReading readings={sentence.reading} furigana={sentence.furigana}
-                                    colors={sentence.reading.map(it => "#94f77e")}/>
-                </td>
-                <td data-label="Raw">
-                    <KanjiInput value={sentence.raw} on:input={it => updateRaw(it.detail, i)}
-                        --background-color="var(--deck-color)"
-                                --font-color="white"
-                                --border-color="var(--deck-color)"
-
-                    />
-
-                </td>
-                <td data-label="Translation">
-                    <textarea
-                           bind:value={sentence.translation}
-                           on:input={(event) => updateTranslation(event.target.value, i)}
-                           disabled={!editable}
-                    />
-                </td>
-                <td data-label="Notes">
-                    <textarea
-                           bind:value={sentence.note}
-                           on:input={(event) => updateNote(event.target.value, i)}
-                           disabled={!editable}
-                    />
-                </td>
-                <td data-label="Hint">
-                    <textarea
-                           bind:value={sentence.hint}
-                           on:input={(event) => updateHint(event.target.value, i)}
-                           disabled={!editable}
-                    />
-                </td>
-                <td data-label="SRS Stage" class="srs-container">
-                   <SrsStage stage={sentence.srs.stage} srs={sentence.srs}/>
-                </td>
-                <td data-label="Actions">
-                    <button class="align-button" on:click={() => deleteSentence(i) }>Delete</button>
-                </td>
+                <th>Sentence</th>
+                <th>Translation</th>
+                <th>Notes</th>
+                <th>Hint</th>
+                <th>SRS Stage</th>
+                <th>Actions</th>
             </tr>
-        {/each}
-        </tbody>
-    </table>
-    <button on:click={addSentence} disabled={!editable}>Add Sentence</button>
-
+            </thead>
+            <tbody>
+            {#each deck.sentences as sentence, i}
+                <tr>
+                    <td class="reading" data-label="Sentence">
+                        <ColoredReading readings={sentence.reading} furigana={sentence.furigana}
+                                        colors={sentence.reading.map(it => "black")}/>
+                    </td>
+                    <td data-label="Translation">
+                        <p>{sentence.translation}</p>
+                    </td>
+                    <td data-label="Notes">
+                        <p>{sentence.note}</p>
+                    </td>
+                    <td data-label="Hint">
+                        <p>{sentence.hint}</p>
+                    </td>
+                    <td data-label="SRS Stage" class="srs-container">
+                        <SrsStage stage={sentence.srs.stage} srs={sentence.srs}/>
+                    </td>
+                    <td data-label="Actions">
+                        <button class="align-button" on:click={() => {editSentence(i)}}>Edit</button>
+                    </td>
+                </tr>
+            {/each}
+            </tbody>
+        </table>
+        <button on:click={deleteDeck} disabled={!editable}>Delete Deck</button>
+    {/if}
 </div>

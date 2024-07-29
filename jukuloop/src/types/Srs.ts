@@ -13,6 +13,7 @@ export enum Stage {
     'Burned'
 }
 
+export const stages: Stage[] = [0, 1, 2, 3, 4, 5, 6, 7, 8].map(i => i as Stage)
 const srs_timings_hours = (stage: Stage, accelerate: boolean = false): number => {
     switch (stage) {
         case Stage.Apprentice1:
@@ -60,7 +61,12 @@ export const adjust_srs = (srs: SRS, correct: boolean): SRS => {
 
 export const pick_sentences = (deck: Deck, now: Date = new Date()): Sentence[] => {
     const next = deck.sentences.filter(sentence => new Date(sentence.srs!.nextReview) < now && sentence.srs?.stage !== Stage.Burned)
-    return next
+    return next.filter(it => it.reading.length !== 0)
+}
+
+export const get_review_text = (srs: SRS, now: Date = new Date()): string => {
+    const timeUntilNextReview = Math.round((new Date(srs.nextReview) - Date.now()) / 1000 / 60)
+    return timeUntilNextReview > 0 ? `in ${timeUntilNextReview} minutes` : "Now"
 }
 
 export interface SRS {

@@ -5,11 +5,8 @@
 
     export let stage: Stage
     export let srs: SRS | null
-
-    $: timeUntilNextReview = srs ? Math.round((new Date(srs.nextReview) - Date.now()) / 1000 / 60) : null
-    $: reviewText = timeUntilNextReview !== null ? timeUntilNextReview > 0 ? `${timeUntilNextReview} minutes` : "Now" : null
 </script>
 <style>
 </style>
 
-<p style="color: {stage_color(stage)}"> {stage_name(stage)} {#if timeUntilNextReview} - {reviewText} {/if}</p>
+<p style="color: {stage_color(stage)}"> {stage_name(stage)} </p>
