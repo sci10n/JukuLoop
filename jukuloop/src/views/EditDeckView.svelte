@@ -4,6 +4,7 @@
     import {get_review_text, type SRS, Stage} from "../types/Srs";
     import SrsStage from "../components/SrsStage.svelte";
     import ColoredReading from "../components/ColoredReading.svelte";
+    import Navigation from "../components/Navigation.svelte";
 
     const dispatch = createEventDispatcher()
 
@@ -15,7 +16,7 @@
     }
 
     const addSentence = () => {
-        deck.sentences = [...deck.sentences, {
+        const sentence = {
             id: Math.random().toString(36).substring(7),
             raw: "",
             reading: [],
@@ -30,8 +31,9 @@
                 streak: 0,
                 maxStreak: 0
             } as SRS
-        }]
-        updateDeck(deck)
+        }
+        deck.sentences = [...deck.sentences, sentence]
+        dispatch("edit", {deck: deck, sentence: sentence})
     }
 
     const updateDeck = (deck: Deck) => {
@@ -60,21 +62,12 @@
     {#if deck}
         <h1>{deck.name}</h1>
         <p>{deck.description}</p>
-        <button class="primary" on:click={() => {dispatch("back")}}>Back</button>
-        <button class="primary" on:click={addSentence}>Add sentence</button>
         <table class="deck-table">
-            <colgroup>
-                <col class="reading"/>
-                <col class="translation"/>
-                <col class="note"/>
-                <col class="hint"/>
-                <col class="srs"/>
-                <col class="actions"/>
-            </colgroup>
             <thead>
             <tr>
-                <th>Sentence</th>
+                <th></th>
                 <th>Translation</th>
+                <th>Sentence</th>
                 <th>Notes</th>
                 <th>Hint</th>
                 <th>Stage</th>
@@ -84,14 +77,29 @@
             </tr>
             </thead>
             <tbody>
+          <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td>
+                    <button class="primary" on:click={() => addSentence()}>Add sentence</button>
+                </td>
+            </tr>
             {#each deck.sentences as sentence, i}
                 <tr>
-                    <td class="reading" data-label="Sentence">
-                        <ColoredReading readings={sentence.reading} furigana={sentence.furigana}
-                                        colors={sentence.reading.map(it => "black")}/>
+                    <td>
+                            <button class="red delete-button" on:click={() => {deleteSentence(sentence)}}>Delete</button>
                     </td>
                     <td data-label="Translation">
                         <p>{sentence.translation}</p>
+                    </td>
+                    <td class="reading" data-label="Sentence">
+                        <ColoredReading readings={sentence.reading} furigana={sentence.furigana}
+                                        colors={sentence.reading.map(it => "black")}/>
                     </td>
                     <td data-label="Notes">
                         <p>{sentence.note}</p>
@@ -112,37 +120,30 @@
                         {/if}
                     </td>
                     <td data-label="Actions">
-                        <button class="primary" on:click={() => {dispatch("edit", {deck: deck, sentence: sentence})}}>Edit</button>
-                        <button class="primary" on:click={() => {
-                            sentence.srs = {
-                                stage: Stage.Apprentice1,
-                                lastReviewed: new Date(),
-                                nextReview: new Date(),
-                                streak: 0,
-                                maxStreak: 0
-                            }
-                            updateDeck(deck)
-                          }}>
-                            Reset
+                        <button class="primary" on:click={() => {dispatch("edit", {deck: deck, sentence: sentence})}}>
+                            Edit
                         </button>
-                    </td>
-                    <td>
-                        <div class="delete-button">
-                            <button class="red" on:click={() => {deleteSentence(sentence)}}>Delete</button>
-                        </div>
                     </td>
                 </tr>
             {/each}
+
             </tbody>
         </table>
     {/if}
+    <Navigation
+        view={[{to: "review", label: "Review",  active: true}, {to: "decks", label: "Edit Decks", active: true}]}
+            on:navigate={(e) => {
+              const to = e.detail.to
+              dispatch("navigate", {to: to})
+            }}
+    />
 </div>
 
 <style>
     @import "../styles/table.css";
     @import "../styles/button.css";
-
     .delete-button {
-        text-align: left;
+        display: flex;
+        justify-content: flex-start;
     }
 </style>

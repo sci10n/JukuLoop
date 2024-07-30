@@ -1,13 +1,14 @@
 <script lang="ts">
-    import {createEventDispatcher, onMount} from "svelte";
-    import {base} from "$app/paths";
+    import {createEventDispatcher} from "svelte";
     import type {Deck, Sentence} from "../types/Sentence";
     import {convertToFuriganaFormat} from "../utils/conversionUtils";
-    import {Stage, stages} from "../types/Srs";
+    import {stages} from "../types/Srs";
     import {stage_name} from "../utils/srs";
     import KanjiInput from "../components/KanjiInput.svelte";
     import ColoredReading from "../components/ColoredReading.svelte";
     import {cleanupInput} from "../utils/misc";
+    import {get_review_text} from "../types/Srs.js";
+    import Navigation from "../components/Navigation.svelte";
 
     const dispatch = createEventDispatcher()
 
@@ -20,7 +21,6 @@
         const converted = convertToFuriganaFormat(raw)
         sentence.reading = converted.reading
         sentence.furigana = converted.furigana
-
     }
 
     const updateTranslation = (translation: string) => {
@@ -33,7 +33,6 @@
 
     const updateHint = (hint: string) => {
         sentence.hint = hint
-        updateSentence(sentence)
     }
 
     const updateSrsStage = (stage: number) => {
@@ -44,7 +43,6 @@
     }
 
     const updateSentence = (sentence: Sentence) => {
-
         updateRaw(cleanupInput(sentence.raw))
         const loadedDecks = localStorage.getItem("decks")
         const decks = loadedDecks ? JSON.parse(loadedDecks) : []
@@ -52,25 +50,21 @@
         const deckIndex = decks.findIndex(it => it.id === deck.id)
         const sentenceIndex = decks[deckIndex].sentences.findIndex(it => it.id === sentence.id)
 
-        decks[deckIndex].sentences[sentenceIndex] = sentence
+        if (sentenceIndex === -1) {
+            decks[deckIndex].sentences.push(sentence)
+        } else {
+            decks[deckIndex].sentences[sentenceIndex] = sentence
+        }
 
         localStorage.setItem("decks", JSON.stringify(decks))
         dispatch("edit", {deck: deck, sentence: sentence})
     }
 
-    onMount(() => {
-        const loadedDecks = localStorage.getItem("decks")
-        const decks = loadedDecks ? JSON.parse(loadedDecks) : []
-
-        deck = decks.find(it => it.id === deck.id)
-        sentence = deck.sentences.find(it => it.id === sentence.id)
-    })
 </script>
 
 <h1>Edit</h1>
 {#if deck && sentence}
     <div class="sentence-container">
-        <button class="primary" on:click={() => {dispatch("back")}}>Back</button>
         <table class="deck-table">
             <colgroup>
                 <col class="raw"/>
@@ -87,7 +81,8 @@
                 <th>Notes</th>
                 <th>Hint</th>
                 <th>SRS Stage</th>
-                <th>Actions</th>
+                <th>Time until Review</th>
+                <th>Reset SSR</th>
             </tr>
             </thead>
             <tbody>
@@ -112,22 +107,42 @@
                     </select>
                 </td>
                 <td>
-                   <button class="primary" on:click={() => updateSentence(sentence)}>Save</button>
+                    <p>{get_review_text(sentence.srs)}</p>
+                </td>
+                <td>
+                    <button class="red" on:click={() => {
+                        sentence.srs.streak = 0
+                        sentence.srs.maxStreak = 0
+                        sentence.srs.stage = stages[0]
+                        sentence.srs.nextReview = new Date()
+                    }
+                         }>Reset
+                    </button>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="5">
+                    <ColoredReading readings={sentence.reading}
+                                    furigana={sentence.furigana}
+                                    colors={sentence.reading.map(it => "black")}
+                    />
                 </td>
             </tr>
             </tbody>
         </table>
-        <br>
-        <div class="sentence-container">
-        <ColoredReading readings={sentence.reading}
-                        furigana={sentence.furigana}
-                        colors={sentence.reading.map(it => "black")}
-        />
-        </div>
     </div>
 {/if}
-
+<Navigation
+        view={[{to: "cancel", label: "Cancel",  active: true}, {to: "save", label: "Save", active: true}]}
+        on:navigate={(e) => {
+              const to = e.detail.to
+              if(to === "cancel") {
+                  dispatch("cancel")
+              } else if (to === "save") {
+                  updateSentence(sentence)
+              }
+            }}/>
 <style>
-@import "../styles/table.css";
-@import "../styles/button.css";
+    @import "../styles/table.css";
+    @import "../styles/button.css";
 </style>

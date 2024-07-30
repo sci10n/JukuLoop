@@ -46,6 +46,43 @@ export const placeholderDeck: Deck = {
 }
 
 
+export interface Card {
+    id: string
+    raw: string
+    reading: string[]
+    furigana: string[]
+    translation: string
+    note: string
+    hint: string
+    srs: SRS
+}
+
+
+export const calculateCorrectnessForwardAndBackward = (sentence: ReadingAndFurigana, answer: string): AnswerCorrectness => {
+
+    const forward = calculateCorrectness(sentence, answer)
+
+    const reverseReading = sentence.reading.toReversed().map(it => it.split("").toReversed().join(""))
+    const reverseFurigana = sentence.furigana.toReversed().map(it => it.split("").toReversed().join(""))
+    const reverseAnswer = answer.split("").toReversed().join("")
+
+    const backward_reverse = calculateCorrectness({
+        reading: reverseReading,
+        furigana: reverseFurigana
+    }, reverseAnswer)
+
+    const backward = {
+        readingCorrectness: backward_reverse.readingCorrectness.toReversed(),
+        answerCorrectness: backward_reverse.answerCorrectness.toReversed(),
+        isCorrect: backward_reverse.isCorrect
+    }
+    return {
+        readingCorrectness: forward.readingCorrectness,
+        answerCorrectness: forward.answerCorrectness,
+        isCorrect: forward.isCorrect && backward.isCorrect
+    }
+}
+
 
 export const calculateCorrectness = (sentence: ReadingAndFurigana, answer: string): AnswerCorrectness => {
     const useKanji = hasKanji(answer)
@@ -60,19 +97,22 @@ export const calculateCorrectness = (sentence: ReadingAndFurigana, answer: strin
 
     const expectedAnswer = getExpectedAnswer(useKanji, sentence)
 
-    const answerCorrectness = answer.split("")
+    const answerCorrectnessForward = answer.split("")
         .map((it, index) => it === expectedAnswer.expectedAnswer[index])
 
+    const answerCorrectness = answerCorrectnessForward
 
     const result = expectedAnswer.expectedAnswer
         .map((expected, index) => expected === answer[index])
 
-    const readingCorrectness = Array.from({length: sentence.reading.length}, () => true)
+    const readingCorrectnessForward = Array.from({length: sentence.reading.length}, () => true)
     expectedAnswer.readingMapping.map((readingIndex, index) => {
         if (!result[index]) {
-            readingCorrectness[readingIndex] = false
+            readingCorrectnessForward[readingIndex] = false
         }
     })
+
+    const readingCorrectness = readingCorrectnessForward
 
     const answersCorrect = answerCorrectness.every((correct) => correct)
     const readingsCorrect = readingCorrectness.every((correct) => correct)
@@ -94,9 +134,9 @@ const getExpectedAnswer = (useKanji: boolean, sentence: ReadingAndFurigana): Exp
         if (useKanji) {
             reading.split("")
                 .forEach((readingPart, index) => {
-                result.push(readingPart)
-                readingMapping.push(i)
-            })
+                    result.push(readingPart)
+                    readingMapping.push(i)
+                })
         } else {
             const reading2 = furigana === "" ? reading : furigana
             reading2.split("").forEach((readingPart, index) => {

@@ -1,11 +1,11 @@
 table {
     width: 100%;
     border-collapse: collapse;
+    margin-bottom: 10%;
 }
 
 th, td {
-    border: 1px solid #ddd;
-    padding: 8px;
+    padding: 2px;
 }
 
 th {
@@ -14,7 +14,7 @@ th {
 }
 
 tr:nth-child(even) {
-    background-color: #f9f9f9;
+    background-color: #e6f1ff;
 }
 
 input, select {
@@ -29,6 +29,7 @@ input, select {
 
     tr {
         display: block;
+        margin-bottom: 1em;
     }
 
     td {

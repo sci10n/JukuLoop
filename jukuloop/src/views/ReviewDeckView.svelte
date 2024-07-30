@@ -5,7 +5,12 @@
     import {createEventDispatcher, onMount} from "svelte";
     import SrsPopup from "../components/SrsPopup.svelte";
     import {adjust_srs, pick_sentences, type Stage} from "../types/Srs";
-    import {type AnswerCorrectness, calculateCorrectness, type Deck, type Sentence} from "../types/Sentence";
+    import {
+        type AnswerCorrectness,
+        calculateCorrectnessForwardAndBackward,
+        type Deck,
+        type Sentence
+    } from "../types/Sentence";
     import {cleanupInput} from "../utils/misc";
 
     export let selectedDeck: Deck | null = null
@@ -46,7 +51,7 @@
 
     const resetAnswer = () => {
         currentAnswer = ""
-        kanjiInputField.value = ""
+        if (kanjiInputField) kanjiInputField.value = ""
         answerLockedIn = false
     }
 
@@ -88,7 +93,7 @@
         hasAdjustedSrs = false
     }
 
-    $: answerCorrectness = currentSentence && calculateCorrectness(currentSentence, currentAnswer) as AnswerCorrectness
+    $: answerCorrectness = currentSentence && calculateCorrectnessForwardAndBackward(currentSentence, currentAnswer) as AnswerCorrectness
     $: answerColors = answerCorrectness && answerCorrectness.answerCorrectness.map((correct) => correct ? '#94f77e' : '#f25f44')
     $: readingColors = answerCorrectness && answerCorrectness.readingCorrectness.map((correct) => correct ? '#94f77e' : '#f25f44')
     $: answerCorrect = answerCorrectness ? answerCorrectness.isCorrect : false
@@ -192,7 +197,7 @@
         border-radius: 5em;
         border-color: var(--border-color, black);
         background: var(--background-color, white);
-        color: var(--font-color, black);
+        color: var(--font-color, #000000);
         font-size: 1.5em;
         margin-bottom: 1em;
     }
@@ -222,11 +227,25 @@
     .hint-container {
         text-align: center;
         margin-top: 0.5em;
+        color: white;
     }
 
     .note-container {
         text-align: center;
         margin-top: 0.3em;
+        color: white;
+    }
+
+    @media (max-width: 480px) {
+        .sentence-container {
+            margin-left: 5%;
+            margin-right: 5%;
+        }
+
+    .input-container input {
+        width: 90%;
+    }
+
     }
 
     .notification {
