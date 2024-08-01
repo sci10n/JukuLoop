@@ -1,16 +1,32 @@
 import type {SRS} from "./Srs";
 import {Stage} from "./Srs";
 import {hasKanji} from "../utils/misc";
+import type {SentencePart} from "../utils/conversionUtils";
 
 export interface Sentence {
     id: string
     raw: string
     reading: string[]
     furigana: string[]
+    optional: boolean[]
+    optionalCluster: number[]
     translation: string
     note?: string
     hint?: string
     srs?: SRS
+}
+
+export const getParts = (sentence: Sentence): SentencePart[] => {
+    const parts = []
+    for (let i = 0; i < sentence.reading.length; i++) {
+        parts.push({
+            reading: sentence.reading[i],
+            furigana: sentence.furigana[i],
+            optional: sentence.optional[i],
+            cluster: sentence.optionalCluster[i]
+        })
+    }
+    return parts
 }
 
 export interface Deck {
@@ -26,6 +42,8 @@ export const placeholderSentence: Sentence = {
     raw: "私（わたし）は学生（がくせい）です",
     reading: ["私", "は", "学生", "で", "す"],
     furigana: ["わたし", "", "がくせい", "", ""],
+    optional: [true, true, false, false, false],
+    optionalCluster: [0, 0, -1, -1, -1],
     translation: "I am a student",
     note: "This is a note and will be shown with the answer.",
     hint: "This is a hint and will be shown with the question.",
@@ -57,31 +75,6 @@ export interface Card {
     srs: SRS
 }
 
-
-export const calculateCorrectnessForwardAndBackward = (sentence: ReadingAndFurigana, answer: string): AnswerCorrectness => {
-
-    const forward = calculateCorrectness(sentence, answer)
-
-    const reverseReading = sentence.reading.toReversed().map(it => it.split("").toReversed().join(""))
-    const reverseFurigana = sentence.furigana.toReversed().map(it => it.split("").toReversed().join(""))
-    const reverseAnswer = answer.split("").toReversed().join("")
-
-    const backward_reverse = calculateCorrectness({
-        reading: reverseReading,
-        furigana: reverseFurigana
-    }, reverseAnswer)
-
-    const backward = {
-        readingCorrectness: backward_reverse.readingCorrectness.toReversed(),
-        answerCorrectness: backward_reverse.answerCorrectness.toReversed(),
-        isCorrect: backward_reverse.isCorrect
-    }
-    return {
-        readingCorrectness: forward.readingCorrectness,
-        answerCorrectness: forward.answerCorrectness,
-        isCorrect: forward.isCorrect && backward.isCorrect
-    }
-}
 
 
 export const calculateCorrectness = (sentence: ReadingAndFurigana, answer: string): AnswerCorrectness => {
@@ -159,7 +152,7 @@ export interface AnswerCorrectness {
     isCorrect: boolean
 }
 
-interface ReadingAndFurigana {
+export interface ReadingAndFurigana {
     reading: string[]
     furigana: string[]
 }

@@ -26,17 +26,17 @@ export const stage_color = (stage: Stage) => {
 export const stage_name = (stage: Stage) => {
         switch (stage) {
             case Stage.Apprentice1:
-                return "Apprentice";
+                return "Apprentice 1";
             case Stage.Apprentice2:
-                return "Apprentice";
+                return "Apprentice 2";
             case Stage.Apprentice3:
-                return "Apprentice";
+                return "Apprentice 3";
             case Stage.Apprentice4:
-                return "Apprentice";
+                return "Apprentice 4";
             case Stage.Guru1:
-                return "Guru";
+                return "Guru 1";
             case Stage.Guru2:
-                return "Guru";
+                return "Guru 2";
             case Stage.Master:
                 return "Master";
             case Stage.Enlightened:

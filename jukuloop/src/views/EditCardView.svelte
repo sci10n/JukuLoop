@@ -1,7 +1,7 @@
 <script lang="ts">
     import {createEventDispatcher} from "svelte";
     import type {Deck, Sentence} from "../types/Sentence";
-    import {convertToFuriganaFormat} from "../utils/conversionUtils";
+    import {parseJapaneseSentence, processComponents} from "../utils/conversionUtils";
     import {stages} from "../types/Srs";
     import {stage_name} from "../utils/srs";
     import KanjiInput from "../components/KanjiInput.svelte";
@@ -17,10 +17,14 @@
 
 
     const updateRaw = (raw: string) => {
-        sentence.raw = raw
-        const converted = convertToFuriganaFormat(raw)
-        sentence.reading = converted.reading
-        sentence.furigana = converted.furigana
+        sentence.raw = raw.split("").map(it => cleanupInput(it)).join("")
+        const components = parseJapaneseSentence(raw)
+        const {reading, furigana, optional, optionalCluster} = processComponents(components);
+
+        sentence.reading = reading
+        sentence.furigana = furigana
+        sentence.optional = optional
+        sentence.optionalCluster = optionalCluster
     }
 
     const updateTranslation = (translation: string) => {
@@ -43,7 +47,7 @@
     }
 
     const updateSentence = (sentence: Sentence) => {
-        updateRaw(cleanupInput(sentence.raw))
+        updateRaw(sentence.raw)
         const loadedDecks = localStorage.getItem("decks")
         const decks = loadedDecks ? JSON.parse(loadedDecks) : []
 
@@ -124,7 +128,7 @@
                 <td colspan="5">
                     <ColoredReading readings={sentence.reading}
                                     furigana={sentence.furigana}
-                                    colors={sentence.reading.map(it => "black")}
+                                    colors={sentence.optional.map(it => it ? "blue" : "black")}
                     />
                 </td>
             </tr>

@@ -21,6 +21,7 @@
             raw: "",
             reading: [],
             furigana: [],
+            optional: [],
             translation: "",
             note: "",
             hint: "",

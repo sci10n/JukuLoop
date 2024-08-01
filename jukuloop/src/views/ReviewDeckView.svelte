@@ -5,13 +5,9 @@
     import {createEventDispatcher, onMount} from "svelte";
     import SrsPopup from "../components/SrsPopup.svelte";
     import {adjust_srs, pick_sentences, type Stage} from "../types/Srs";
-    import {
-        type AnswerCorrectness,
-        calculateCorrectnessForwardAndBackward,
-        type Deck,
-        type Sentence
-    } from "../types/Sentence";
-    import {cleanupInput} from "../utils/misc";
+    import {type Deck, type Sentence} from "../types/Sentence";
+    import {calculateMostLikelyCorrectness} from "../utils/conversionUtils";
+    import {getParts} from "../types/Sentence.js";
 
     export let selectedDeck: Deck | null = null
 
@@ -93,16 +89,32 @@
         hasAdjustedSrs = false
     }
 
-    $: answerCorrectness = currentSentence && calculateCorrectnessForwardAndBackward(currentSentence, currentAnswer) as AnswerCorrectness
-    $: answerColors = answerCorrectness && answerCorrectness.answerCorrectness.map((correct) => correct ? '#94f77e' : '#f25f44')
-    $: readingColors = answerCorrectness && answerCorrectness.readingCorrectness.map((correct) => correct ? '#94f77e' : '#f25f44')
-    $: answerCorrect = answerCorrectness ? answerCorrectness.isCorrect : false
+    $: correctness = currentAnswer && currentSentence && calculateMostLikelyCorrectness(currentAnswer, currentSentence, getParts(currentSentence))
+    $: answerCorrect = correctness && correctness.answerCorrect
+
+    const calculateColors = (readingCorectness: (boolean | null)[], referenceSentence: Sentence) => {
+        let colors = referenceSentence.reading.map(() => 'black')
+        readingCorectness.forEach((correct, index) => {
+            if (correct === null) {
+            }
+            if (correct === true) {
+                colors[index] = ' #94f77e'
+            }
+            if (correct === false) {
+                colors[index] = '#f25f44'
+            }
+        })
+        return colors
+    }
+
+    $: readingColors = currentSentence && currentAnswer && currentSentence && calculateColors(correctness.readingCorrectness, currentSentence)
 
     $: if (kanjiInputField) {
         kanjiInputField.value = ""
         kanjiInputField && wanakana.bind(kanjiInputField)
         kanjiInputField.addEventListener('input', (event) => {
-            currentAnswer = cleanupInput((event.target as HTMLInputElement).value)
+            currentAnswer = ((event.target as HTMLInputElement).value).split("").filter((it) => it !== " ").join("")
+
         })
         focusInput()
     }
@@ -110,6 +122,15 @@
 
     onMount(() => {
         pickSentence()
+        const inputContainer = document.querySelector('.input-container');
+        if (inputContainer) {
+            inputContainer.addEventListener('touchstart', () => {
+                if (selectedDeck && currentSentence && answerLockedIn) {
+                    resetAnswer()
+                    pickSentence()
+                }
+            });
+        }
         window.addEventListener('keydown', (event) => {
             if (event.key === "Enter") {
                 validateInput(currentAnswer)
@@ -153,18 +174,13 @@
 
     {#if answerLockedIn}
         <div class="sentence-container">
-            <ColoredReading
-                    readings={currentAnswer}
-                    furigana={[]}
-                    colors={answerColors}
-            />
-        </div>
-        <div class="sentence-container">
-            <ColoredReading
-                    readings={currentSentence.reading}
-                    furigana={currentSentence.furigana}
-                    colors={readingColors}
-            />
+            {#if currentSentence}
+                <ColoredReading
+                        readings={currentSentence.reading}
+                        furigana={currentSentence.furigana}
+                        colors={readingColors}
+                />
+            {/if}
         </div>
         {#if currentSentence.note}
             <div class="note-container">
@@ -172,9 +188,13 @@
             </div>
         {/if}
         <div class="result-container">
-            <h2 class={answerCorrect ? 'correct' : 'incorrect'}>
-                {answerCorrect ? 'Correct!' : 'Incorrect'}
-            </h2>
+            {#if correctness}
+                {#if correctness.answerCorrect}
+                    <p class="correct">Correct!</p>
+                {:else}
+                    <p class="incorrect">Incorrect!</p>
+                {/if}
+            {/if}
         </div>
     {/if}
 
@@ -189,6 +209,10 @@
         color: white;
         text-align: center;
         padding-top: 1em;
+    }
+
+    p {
+        color: white;
     }
 
     input {
@@ -236,15 +260,15 @@
         color: white;
     }
 
-    @media (max-width: 480px) {
+    @media (max-width: 767px) {
         .sentence-container {
             margin-left: 5%;
             margin-right: 5%;
         }
 
-    .input-container input {
-        width: 90%;
-    }
+        .input-container input {
+            width: 90%;
+        }
 
     }
 

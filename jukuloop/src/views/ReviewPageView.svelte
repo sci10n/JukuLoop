@@ -121,6 +121,7 @@
     @media (max-width: 767px) {
         .container {
             width: 100%;
+            margin-top: 0;
         }
     }
 
