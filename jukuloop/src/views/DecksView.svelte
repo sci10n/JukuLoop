@@ -1,94 +1,118 @@
 <script lang="ts">
-    import {base} from '$app/paths';
-
-    import {createEventDispatcher, onMount} from "svelte";
-    import type {Deck} from "../types/Sentence";
+    import { createEventDispatcher, onMount } from "svelte";
     import Navigation from "../components/Navigation.svelte";
+    import type { Crud, DeckMetadata } from "../db/crud";
 
-    const dispatch = createEventDispatcher()
+    const dispatch = createEventDispatcher();
 
-    export let decks: Deck[] = []
+    export let decks: DeckMetadata[] = [];
+    export let storage: Crud;
 
-    const addDeck = () => {
-        const name = prompt("Enter the name of the deck")
-        const description = prompt("Enter the description of the deck")
-        const id = Math.random().toString(36).substring(7)
-        decks.push({id, name, description, sentences: []})
-        localStorage.setItem("decks", JSON.stringify(decks))
-        decks = decks
+    function addDeck() {
+        const name = prompt("Enter the name of the deck");
+        const description = prompt("Enter the description of the deck");
+        if (name && description) {
+            const id = Math.random().toString(36).substring(7);
+            const deck: DeckMetadata = { id, name, description, sentenceIds: [] };
+            storage.addDeck(deck);
+            decks = storage.getDecks();
+        }
     }
 
-    const deleteDeck = (deck: Deck) => {
-        decks = decks.filter(it => it.id !== deck.id)
-        localStorage.setItem("decks", JSON.stringify(decks))
+    function deleteDeck(deckId: string) {
+        if (confirm("Are you sure you want to delete this deck?")) {
+            storage.deleteDeck(deckId);
+            decks = storage.getDecks();
+        }
     }
 
     onMount(() => {
-        const loadedDecks = localStorage.getItem("decks")
-        decks = loadedDecks ? JSON.parse(loadedDecks) : []
-    })
+        // Any initialization logic can go here
+    });
 </script>
 
-<h1>Decks</h1>
-<table class="deck-table">
-    <colgroup>
-        <col class="name"/>
-        <col class="description"/>
-        <col class="actions"/>
-    </colgroup>
-    <thead>
-    <tr>
-        <th>Name</th>
-        <th>Description</th>
-        <th>Edit</th>
-        <th></th>
-    </tr>
-    </thead>
-    <tbody>
-    {#each decks as deck, i}
-        <tr>
-            <td>
-                <button class="red delete-button" on:click={() => {deleteDeck(deck)}}>Delete</button>
-            </td>
-            <td class="name" data-label="Name">
-                {deck.name}
-            </td>
-            <td data-label="Description">
+<div class="decks-view">
+    <h1>Decks</h1>
+
+    <div class="deck-list">
+        {#each decks as deck (deck.id)}
+            <div class="deck-card">
+                <h2>{deck.name} ({deck.sentenceIds.length})</h2>
                 <p>{deck.description}</p>
-            </td>
-            <td data-label="Actions">
-                <button class="primary edit-button"
-                        on:click={() => {
-                            dispatch("edit", {deck: deck})
-                        }}>
-                    Edit
-                </button>
-            </td>
-        </tr>
-    {/each}
-    <tr>
-        <td></td>
-        <td></td>
-        <td></td>
-        <td>
-            <button class="primary edit-button" on:click={() => addDeck()}>Add deck</button>
-        </td>
-    </tr>
-    </tbody>
-</table>
-<Navigation
-        view={[{to: "review", label: "Review",  active: true}, {to: "decks", label: "Edit Decks", active: false}]}
-        on:navigate={(e) => {
-              const to = e.detail.to
-              dispatch("navigate", {to: to})
-            }}
-/>
+                <div class="deck-actions">
+                    <button class="edit-button" on:click={() => dispatch("edit", { deck })}>
+                        Edit
+                    </button>
+                    <button class="delete-button" on:click={() => deleteDeck(deck.id)}>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        {/each}
+    </div>
+
+    <button class="add-deck-button" on:click={addDeck}>Add Deck</button>
+
+    <Navigation
+        view={[
+            { to: "review", label: "Review", active: true },
+            { to: "decks", label: "Edit Decks", active: false }
+        ]}
+        on:navigate={(e) => dispatch("navigate", { to: e.detail.to })}
+    />
+</div>
+
 <style>
-    @import "../styles/table.css";
-    @import "../styles/button.css";
+    .decks-view {
+        padding: 1rem;
+    }
+
+    .deck-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .deck-card {
+        background-color: #f0f0f0;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .deck-card h2 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+
+    .deck-actions {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1rem;
+    }
+
+    button {
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: bold;
+    }
+
+    .edit-button {
+        background-color: #4CAF50;
+        color: white;
+    }
 
     .delete-button {
-        display: flex;
-        justify-content: flex-start;
+        background-color: #f44336;
+        color: white;
+    }
+
+    .add-deck-button {
+        background-color: #2196F3;
+        color: white;
+        margin-bottom: 1rem;
     }
 </style>

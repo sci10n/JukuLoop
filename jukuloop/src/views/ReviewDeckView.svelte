@@ -5,11 +5,15 @@
     import {createEventDispatcher, onMount} from "svelte";
     import SrsPopup from "../components/SrsPopup.svelte";
     import {adjust_srs, pick_sentences, type Stage} from "../types/Srs";
-    import {type Deck, type Sentence} from "../types/Sentence";
+    import {type Sentence} from "../types/Sentence";
     import {calculateMostLikelyCorrectness} from "../utils/conversionUtils";
     import {getParts} from "../types/Sentence.js";
+    import type {Crud, DeckMetadata} from "../db/crud";
 
-    export let selectedDeck: Deck | null = null
+    export let storage: Crud
+    export let selectedDeck: DeckMetadata
+
+    $: selectedDeckSentences = storage && selectedDeck && storage.getSentencesForDeck(selectedDeck.id)
 
     const dispatch = createEventDispatcher()
 
@@ -26,14 +30,14 @@
 
     let hasAdjustedSrs = false
 
-    $: selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
+    $: selectedSentences = selectedDeckSentences ? pick_sentences(selectedDeckSentences) as Sentence[] : []
     $: if (selectedDeck) {
         pickSentence()
     }
 
     const pickSentence = () => {
         if (selectedSentences.length > 0) {
-            selectedSentences = selectedDeck ? pick_sentences(selectedDeck) as Sentence[] : []
+            selectedSentences = selectedDeckSentences ? pick_sentences(selectedDeckSentences) as Sentence[] : []
             console.log("Number of sentences: " + selectedSentences.length)
             if (selectedSentences.length === 0) {
                 currentSentence = null
@@ -114,7 +118,6 @@
         kanjiInputField && wanakana.bind(kanjiInputField)
         kanjiInputField.addEventListener('input', (event) => {
             currentAnswer = ((event.target as HTMLInputElement).value).split("").filter((it) => it !== " ").join("")
-
         })
         focusInput()
     }
@@ -122,15 +125,6 @@
 
     onMount(() => {
         pickSentence()
-        const inputContainer = document.querySelector('.input-container');
-        if (inputContainer) {
-            inputContainer.addEventListener('touchstart', () => {
-                if (selectedDeck && currentSentence && answerLockedIn) {
-                    resetAnswer()
-                    pickSentence()
-                }
-            });
-        }
         window.addEventListener('keydown', (event) => {
             if (event.key === "Enter") {
                 validateInput(currentAnswer)

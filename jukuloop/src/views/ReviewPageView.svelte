@@ -1,59 +1,34 @@
 <script lang="ts">
-    import {type Deck, placeholderSentence, type Sentence} from "../types/Sentence";
     import {createEventDispatcher, onMount} from "svelte";
     import {pick_sentences, type SRS} from "../types/Srs";
     import ReviewDeck from "../views/ReviewDeckView.svelte";
     import Navigation from "../components/Navigation.svelte";
+    import type {Crud, DeckMetadata} from "../db/crud";
+    import type {Sentence} from "../types/Sentence";
 
     const dispatch = createEventDispatcher()
 
-    let decksStore: Deck[] = []
-    let selectedDeck: Deck | null
+    export let decks: DeckMetadata[] = []
+    export let storage: Crud
 
-    $: reviewsInDeck = decksStore.map(deck => pick_sentences(deck).length)
-    $: sentencesInDeck = decksStore.map(deck => deck.sentences.length)
+    let selectedDeck: DeckMetadata | null = null
 
-    $: showCreateDeck = decksStore.length === 0
-    $: showDecksView = decksStore.length > 0 && selectedDeck === null
-    $: showReviewView = selectedDeck !== null
-
-    const saveDecks = (sentence: Sentence, new_srs: SRS) => {
-        const _currentDeck: Deck = selectedDeck as Deck
-        const _currentSentence: Sentence = sentence
-
-        const deckIndex = decksStore.findIndex(deck => deck === _currentDeck)
-        const sentenceIndex = _currentDeck.sentences.findIndex(sentence => sentence === _currentSentence)
-
-        if (deckIndex !== -1) {
-            if (sentenceIndex !== -1) {
-                _currentDeck.sentences[sentenceIndex] = {
-                    ..._currentSentence,
-                    srs: new_srs
-                }
-                decksStore[deckIndex] = _currentDeck
-            }
-        }
-        localStorage.setItem('decks', JSON.stringify(decksStore))
+    $: if(decks) {
+        console.log("Deck", decks)
+        console.log("Selected Deck", selectedDeck)
     }
+    $: sentencesInDecks = decks && storage && decks.map(deck => storage.getSentencesForDeck(deck.id))
+
+    $: reviewsInDeck = decks.map((deck, i) => pick_sentences(sentencesInDecks[i]).length)
+    $: sentencesInDeck = decks.map((deck, i) => (sentencesInDecks[i].length))
+
+    $: showCreateDeck = decks.length === 0
+    $: showDecksView = decks.length > 0 && !selectedDeck
+    $: showReviewView = selectedDeck
+
 
     onMount(() => {
-        const storedDecks = localStorage.getItem('decks')
-        if (storedDecks) {
-            decksStore = JSON.parse(storedDecks)
-        }
 
-        if (!storedDecks || decksStore.length == 0) {
-            decksStore = [
-                {
-                    id: "placeholder",
-                    name: "Default Deck",
-                    description: "This is a default deck",
-                    sentences: [
-                        placeholderSentence
-                    ]
-                }
-            ]
-        }
     })
 </script>
 
@@ -64,17 +39,15 @@
                 <h1>Choose a deck</h1>
                 <form>
                     <select name="decks" id="decks" bind:value={selectedDeck}>
-                        {#each decksStore as deck, i}
+                        {#each decks as deck, i}
                             <option value={deck}>{deck.name}  ({reviewsInDeck[i]}/{sentencesInDeck[i]})</option>
                         {/each}
                     </select>
                 </form>
             </div>
         {/if}
-        {#if showReviewView}
-            <ReviewDeck bind:selectedDeck={selectedDeck} on:srs={(event) => {
-                    saveDecks(event.detail.sentence, event.detail.srs)
-                }}/>
+        {#if showReviewView && selectedDeck}
+            <ReviewDeck storage={storage} bind:selectedDeck={selectedDeck}/>
         {/if}
     </div>
 </div>

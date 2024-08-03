@@ -1,72 +1,199 @@
-import type {Card, Deck} from "../types/Sentence";
+import type {Sentence} from "../types/Sentence";
+import type {SRS} from "../types/Srs";
+import {parseJapaneseSentence, processComponents} from "../utils/conversionUtils";
 
 
 export interface Crud {
-    put_card: (card: Card) => Promise<Card>
-    get_card: (id: string) => Promise<Card>
-    delete_card: (id: string) => Promise<void>
-    put_deck: (deck: Deck) => Promise<Deck>
-    get_deck: (id: string) => Promise<Deck>
-    delete_deck: (id: string) => Promise<void>
-    add_card_to_deck: (deck_id: string, card_id: string) => Promise<Deck>
+    addOrUpdateSrs: (sentenceId: string, srs: SRS) => void
+    getSrs: (sentenceId: string) => SRS | undefined
+    removeSrs: (sentenceId: string) => void
+
+    addOrUpdateSentence: (sentence: Sentence) => void
+    getSentenceWithSrs: (sentenceId: string) => CardMetadata | undefined
+    updateSentenceSrs: (sentenceId: string, srs: Partial<SRS>) => void
+    deleteSentence: (sentenceId: string) => void
+
+    addOrUpdateDeck: (deck: DeckMetadata) => void
+    deleteDeck: (deckId: string) => void
+    getDeck: (deckId: string) => DeckMetadata | undefined
+    getDecks: () => DeckMetadata[]
+    addSentenceToDeck: (deckId: string, sentenceId: string) => void
+
+    removeSentenceFromDeck: (deckId: string, sentenceId: string) => void
+
+    getSentencesForDeck: (deckId: string) => Sentence[]
 }
 
 
-export const put_card = async (card: Card, crud: Crud): Promise<Card> => crud.put_card(card)
-export const get_card = async (id: string, crud: Crud): Promise<Card> => crud.get_card(id)
-export const delete_card = async (id: string, crud: Crud): Promise<void> => crud.delete_card(id)
-export const put_deck = async (deck: Deck, crud: Crud): Promise<Deck> => crud.put_deck(deck)
-export const get_deck = async (id: string, crud: Crud): Promise<Deck> => crud.get_deck(id)
-export const delete_deck = async (id: string, crud: Crud): Promise<void> => crud.delete_deck(id)
-export const add_card_to_deck = async (deck_id: string, card_id: string, crud: Crud): Promise<Deck> => crud.add_card_to_deck(deck_id, card_id)
+export interface DeckMetadata {
+    id: string
+    name: string
+    description: string
+    sentenceIds: string[]
+}
 
+export interface CardMetadata {
+    id: string,
+    raw: string,
+    translation: string
+    hint?: string
+    note?: string
+}
 
-
-export const persistence_storage_crud = (name: string) => Crud => {
+const toSentence = (card: CardMetadata, srs: SRS): Sentence => {
+    const parts = parseJapaneseSentence(card.raw)
+    const components = processComponents(parts)
     return {
-        put_card: async (card: Card) => {
-            const key = `${name}.card.${card.id}`
-            localStorage.setItem(key, JSON.stringify(card))
-            return card
-        },
-        get_card: async (id: string) => {
-            const key = `${name}.card.${id}`
-            const card = localStorage.getItem(key)
-            if (card === null) {
-                throw new Error(`Card with id ${id} not found`)
+        id: card.id,
+        raw: card.raw,
+        ...components,
+        translation: card.translation,
+        hint: card.hint,
+        note: card.note,
+        srs: srs
+    }
+}
+
+export interface SrsStorage {
+    [sentenceId: string]: SRS
+}
+
+const DECK_METADATA_KEY = 'jukuloop_deckMetadata';
+const SENTENCES_KEY = 'jukuloop_sentences';
+const SRS_KEY = 'jukuloop_srs';
+
+const setItem = (key: string, value: any) => {
+    try {
+        const serialized = JSON.stringify(value, (k, v) => {
+            if (v instanceof Date) {
+                return v.toISOString()
             }
-            return JSON.parse(card)
-        },
-        delete_card: async (id: string) => {
-            const key = `${name}.card.${id}`
-            localStorage.removeItem(key)
-        },
-        put_deck: async (deck: Deck) => {
-            const key = `${name}.deck.${deck.id}`
-            localStorage.setItem(key, JSON.stringify(deck))
-        },
-        get_deck: async (id: string) => {
-            const key = `${name}.deck.${id}`
-            const deck = localStorage.getItem(key)
-            if (deck === null) {
-                throw new Error(`Deck with id ${id} not found`)
-            }
-            return JSON.parse(deck)
-        },
-        delete_deck: async (id: string) => {
-            const key = `${name}.deck.${id}`
-            localStorage.removeItem(key)
-        },
-        add_card_to_deck: async (deck_id: string, card_id: string) => {
-            const deck_key = `${name}.deck.${deck_id}`
-            const deck = localStorage.getItem(deck_key)
-            if (deck === null) {
-                throw new Error(`Deck with id ${deck_id} not found`)
-            }
-            const deck_obj = JSON.parse(deck)
-            deck_obj.sentences.push(card_id)
-            localStorage.setItem(deck_key, JSON.stringify(deck_obj))
-            return deck_obj
+            return v
+        });
+        localStorage.setItem(key, serialized)
+    } catch (e) {
+        console.error(e)
+    }
+}
+
+const getItem = <T>(key: string, defaultValue: T): T => {
+    try {
+        const item = localStorage.getItem(key)
+        if (item === null) {
+            return defaultValue
         }
+        return JSON.parse(item, (k, v) => {
+                if (k === 'nextReview' || k === 'lastReview') {
+                    return new Date(v)
+                }
+                return v
+            }
+        )
+    } catch (e) {
+        console.error(e)
+        return defaultValue
+    }
+}
+
+
+export const createStorage = (): Crud => {
+    return {
+        deleteSentence(sentenceId: string): void {
+            const sentences = getItem<Record<string, CardMetadata>>(SENTENCES_KEY, {})
+            delete sentences[sentenceId]
+            setItem(SENTENCES_KEY, sentences)
+        },
+        addOrUpdateDeck(deck: DeckMetadata): void {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            decks[deck.id] = deck
+            setItem(DECK_METADATA_KEY, decks)
+        },
+        deleteDeck(deckId: string): void {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            delete decks[deckId]
+            setItem(DECK_METADATA_KEY, decks)
+        },
+        addSentenceToDeck(deckId: string, sentenceId: string): void {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            const deck = decks[deckId]
+            if (deck && !deck.sentenceIds.includes(sentenceId)) {
+                deck.sentenceIds.push(sentenceId)
+                decks[deckId] = deck
+                setItem(DECK_METADATA_KEY, decks)
+            }
+        },
+        removeSentenceFromDeck(deckId: string, sentenceId: string): void {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            const deck = decks[deckId]
+            if (deck) {
+                deck.sentenceIds = deck.sentenceIds.filter(id => id !== sentenceId)
+                decks[deckId] = deck
+                setItem(DECK_METADATA_KEY, decks)
+            }
+        },
+        getSentencesForDeck(deckId: string): Sentence[] {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            const deck = decks[deckId]
+            if (deck) {
+                const sentences = getItem<Record<string, Sentence>>(SENTENCES_KEY, {})
+                return deck.sentenceIds.map(id => toSentence(sentences[id], this.getSrs(id)!))
+            }
+            return []
+        },
+        getDeck(deckId: string): DeckMetadata | undefined {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            return decks[deckId];
+        },
+        getDecks(): DeckMetadata[] {
+            const decks = getItem<Record<string, DeckMetadata>>(DECK_METADATA_KEY, {})
+            return Object.values(decks)
+        },
+        addOrUpdateSrs(sentenceId: string, srs: SRS): void {
+            const srsStorage = getItem<SrsStorage>(SRS_KEY, {})
+            srsStorage[sentenceId] = srs
+            setItem(SRS_KEY, srsStorage)
+        },
+        getSrs(sentenceId: string): SRS | undefined {
+            const srsStorage = getItem<SrsStorage>(SRS_KEY, {})
+            return srsStorage[sentenceId]
+        },
+        removeSrs(sentenceId: string): void {
+            const srsStorage = getItem<SrsStorage>(SRS_KEY, {})
+            delete srsStorage[sentenceId]
+            setItem(SRS_KEY, srsStorage)
+        },
+        addOrUpdateSentence(sentence: Sentence): void {
+            const sentences = getItem<Record<string, CardMetadata>>(SENTENCES_KEY, {});
+            sentences[sentence.id] = {
+                id: sentence.id,
+                raw: sentence.raw,
+                translation: sentence.translation,
+                hint: sentence.hint,
+                note: sentence.note
+            }
+            setItem(SENTENCES_KEY, sentences)
+            const srs = sentence.srs
+            if (srs) {
+                this.addOrUpdateSrs(sentence.id, srs)
+            }
+        },
+        getSentenceWithSrs(sentenceId: string): Sentence | undefined {
+            const cards = getItem<Record<string, CardMetadata>>(SENTENCES_KEY, {})
+            const srs = this.getSrs(sentenceId)
+            const card = cards[sentenceId]
+            const sentence = toSentence(card, srs!)
+            if (sentence && srs) {
+                return {...sentence, srs}
+            }
+            return undefined
+        },
+
+        updateSentenceSrs(sentenceId: string, srs: Partial<SRS>): void {
+            const existingSrs = this.getSrs(sentenceId)
+            if (existingSrs) {
+                this.addOrUpdateSrs(sentenceId, {...existingSrs, ...srs})
+            }
+        }
+
     }
 }

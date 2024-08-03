@@ -37,7 +37,7 @@ export function parseJapaneseSentence(inputString: string): Component[] {
             components.push({type: 'punctuation', text: match[7]});
         }
     }
-    console.log(components)
+   // console.log(components)
     return components;
 }
 
@@ -73,7 +73,7 @@ export function processComponents(components: Component[], includePunctuation: b
             case 'optional':
                 let adjustedText = component.text
                 // This is to handle the case where the optional part is followed by a punctuation due to the regex not being able to handle it.
-                if (components[index + 1].type === 'punctuation' && components[index + 1].text === ')') {
+                if(components[index + 1] && components[index + 1].type === 'punctuation' && components[index + 1].text === ')') {
                     adjustedText = component.text + ")"
                     components[index + 1].type = "ignore"
                 }
@@ -234,10 +234,11 @@ export const calculateCorrectness = (possibleAnswer: PossibleAnswer, referenceSe
     // console.log("Reading mapping", possibleAnswer.readingMapping)
     // console.log("Reading correctness: ", readingCorrectness)
     // console.log("Full reading correctness: ", readingMappingCorrectness)
+    const lengthCorrect = answer.length <= possibleAnswer.reading.length
     const answerCorrect = readingMappingCorrectness.every((correct) => correct === null | correct === true)
     return {
         readingCorrectness: readingMappingCorrectness,
-        answerCorrect: answerCorrect
+        answerCorrect: answerCorrect && lengthCorrect
     }
 }
 

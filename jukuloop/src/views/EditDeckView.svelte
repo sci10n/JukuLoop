@@ -1,72 +1,66 @@
 <script lang="ts">
-    import {createEventDispatcher, onMount} from "svelte";
-    import type {Deck, Sentence} from "../types/Sentence";
-    import {get_review_text, type SRS, Stage} from "../types/Srs";
+    import {createEventDispatcher} from "svelte";
+    import type {Sentence} from "../types/Sentence";
+    import {get_review_text, Stage} from "../types/Srs";
     import SrsStage from "../components/SrsStage.svelte";
     import ColoredReading from "../components/ColoredReading.svelte";
     import Navigation from "../components/Navigation.svelte";
+    import type {Crud, DeckMetadata} from "../db/crud";
 
-    const dispatch = createEventDispatcher()
+    const dispatch = createEventDispatcher();
 
-    export let deck: Deck
+    export let deckMetadata: DeckMetadata;
+    export let storage: Crud;
 
-    const deleteSentence = (sentence: Sentence) => {
-        deck.sentences = deck.sentences.filter(it => it.id !== sentence.id)
-        updateDeck(deck)
+    let editName = deckMetadata.name;
+    let editDescription = deckMetadata.description;
+
+    $: sentences = deckMetadata && storage && storage.getSentencesForDeck(deckMetadata.id);
+
+    function saveDeck() {
+        deckMetadata.name = editName;
+        deckMetadata.description = editDescription;
+        storage.addOrUpdateDeck(deckMetadata);
+        dispatch("navigate", {to: "decks"});
     }
 
-    const addSentence = () => {
-        const sentence = {
-            id: Math.random().toString(36).substring(7),
+    function addSentence() {
+        const sentenceId = Math.random().toString(36).substring(7);
+        const sentence: Sentence = {
+            id: sentenceId,
+            furigana: [],
+            hint: "",
+            note: "",
+            optional: [],
+            optionalCluster: [],
             raw: "",
             reading: [],
-            furigana: [],
-            optional: [],
-            translation: "",
-            note: "",
-            hint: "",
             srs: {
                 stage: Stage.Apprentice1,
-                lastReviewed: new Date(),
                 nextReview: new Date(),
+                lastReview: new Date(),
                 streak: 0,
                 maxStreak: 0
-            } as SRS
-        }
-        deck.sentences = [...deck.sentences, sentence]
-        dispatch("edit", {deck: deck, sentence: sentence})
+            },
+            translation: ""
+        };
+
+        dispatch("edit", {deck: deckMetadata, sentence: sentence});
     }
-
-    const updateDeck = (deck: Deck) => {
-        const loadedDecks = localStorage.getItem("decks")
-        const decks = loadedDecks ? JSON.parse(loadedDecks) : []
-
-        const deckIndex = decks.findIndex(it => it.id === deck.id)
-        decks[deckIndex] = deck
-
-        localStorage.setItem("decks", JSON.stringify(decks))
-
-        deck = deck
-    }
-    onMount(() => {
-        const loadedDecks = localStorage.getItem("decks")
-        const decks = loadedDecks ? JSON.parse(loadedDecks) : []
-
-        deck = decks.find(it => it.id === deck.id)
-    })
 </script>
 
 <div class="container">
-    {#if !deck}
+    {#if !deckMetadata}
         <p>Deck not found</p>
-    {/if}
-    {#if deck}
-        <h1>{deck.name}</h1>
-        <p>{deck.description}</p>
-        <table class="deck-table">
+    {:else}
+        <div class="deck-info">
+            <input bind:value={editName} placeholder="Deck Name"/>
+            <textarea bind:value={editDescription} placeholder="Deck Description"></textarea>
+        </div>
+
+        <table class="sentence-table">
             <thead>
             <tr>
-                <th></th>
                 <th>Translation</th>
                 <th>Sentence</th>
                 <th>Notes</th>
@@ -74,77 +68,121 @@
                 <th>Stage</th>
                 <th>Review</th>
                 <th>Actions</th>
-                <th></th>
             </tr>
             </thead>
             <tbody>
-          <tr>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td></td>
-                <td>
-                    <button class="primary" on:click={() => addSentence()}>Add sentence</button>
-                </td>
-            </tr>
-            {#each deck.sentences as sentence, i}
+            {#each sentences as sentence (sentence.id)}
                 <tr>
-                    <td>
-                            <button class="red delete-button" on:click={() => {deleteSentence(sentence)}}>Delete</button>
+                    <td>{sentence.translation}</td>
+                    <td class="reading">
+                        <ColoredReading
+                                readings={sentence.reading}
+                                furigana={sentence.furigana}
+                                colors={sentence.optional.map(it => it ? "blue" : "black")}
+                        />
                     </td>
-                    <td data-label="Translation">
-                        <p>{sentence.translation}</p>
-                    </td>
-                    <td class="reading" data-label="Sentence">
-                        <ColoredReading readings={sentence.reading} furigana={sentence.furigana}
-                                        colors={sentence.reading.map(it => "black")}/>
-                    </td>
-                    <td data-label="Notes">
-                        <p>{sentence.note}</p>
-                    </td>
-                    <td data-label="Hint">
-                        <p>{sentence.hint}</p>
-                    </td>
-                    <td data-label="SRS Stage" class="srs-container">
+                    <td>{sentence.note}</td>
+                    <td>{sentence.hint}</td>
+                    <td class="srs-container">
                         {#if sentence.srs}
                             <SrsStage stage={sentence.srs.stage} srs={sentence.srs}/>
                         {/if}
                     </td>
-                    <td data-label="SRS Stage" class="srs-container">
+                    <td>
                         {#if sentence.srs}
-                            <p>
-                                { get_review_text(sentence.srs)}
-                            </p>
+                            {get_review_text(sentence.srs)}
                         {/if}
                     </td>
-                    <td data-label="Actions">
-                        <button class="primary" on:click={() => {dispatch("edit", {deck: deck, sentence: sentence})}}>
+                    <td>
+                        <button class="primary"
+                                on:click={() => dispatch("edit", {deck: deckMetadata, sentence: sentence})}>
                             Edit
                         </button>
                     </td>
                 </tr>
             {/each}
-
             </tbody>
         </table>
+
+        <button class="primary add-sentence" on:click={addSentence}>Add Sentence</button>
+
+        <Navigation
+                view={[
+            { to: "cancel", label: "Cancel", active: true },
+            { to: "save", label: "Save", active: true }
+        ]}
+                on:navigate={e => e.detail.to === "save" ? saveDeck() : dispatch("cancel")}
+        />
     {/if}
-    <Navigation
-        view={[{to: "review", label: "Review",  active: true}, {to: "decks", label: "Edit Decks", active: true}]}
-            on:navigate={(e) => {
-              const to = e.detail.to
-              dispatch("navigate", {to: to})
-            }}
-    />
 </div>
 
 <style>
-    @import "../styles/table.css";
-    @import "../styles/button.css";
-    .delete-button {
+    .container {
+        padding: 1rem;
+    }
+
+    .deck-info {
+        margin-bottom: 2rem;
+    }
+
+    .deck-info input,
+    .deck-info textarea {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .sentence-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .sentence-table th,
+    .sentence-table td {
+        border: 1px solid #ddd;
+        padding: 0.5rem;
+        text-align: left;
+    }
+
+    .sentence-table th {
+        background-color: #f2f2f2;
+    }
+
+    .action-buttons {
         display: flex;
-        justify-content: flex-start;
+        justify-content: space-between;
+    }
+
+    .action-buttons button {
+        padding: 0.25rem 0.5rem;
+    }
+
+    .add-sentence {
+        margin-top: 1rem;
+    }
+
+    .reading {
+        max-width: 200px;
+        overflow-wrap: break-word;
+    }
+
+    .srs-container {
+        text-align: center;
+    }
+
+    button {
+        cursor: pointer;
+    }
+
+    button.primary {
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+    }
+
+    button.red {
+        background-color: #f44336;
+        color: white;
+        border: none;
     }
 </style>

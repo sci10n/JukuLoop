@@ -3,6 +3,16 @@ import {Stage} from "./Srs";
 import {hasKanji} from "../utils/misc";
 import type {SentencePart} from "../utils/conversionUtils";
 
+
+
+
+export interface Deck {
+    id: string
+    name: string
+    description: string
+    cards: Sentence[]
+}
+
 export interface Sentence {
     id: string
     raw: string
@@ -29,13 +39,6 @@ export const getParts = (sentence: Sentence): SentencePart[] => {
     return parts
 }
 
-export interface Deck {
-    id: string,
-    sentences: Sentence[]
-    name: string
-    description: string
-}
-
 
 export const placeholderSentence: Sentence = {
     id: "placeholder-card",
@@ -55,14 +58,6 @@ export const placeholderSentence: Sentence = {
         maxStreak: 0
     }
 }
-
-export const placeholderDeck: Deck = {
-    id: "placeholder-deck",
-    sentences: [placeholderSentence],
-    name: "Placeholder deck",
-    description: "This is a placeholder deck"
-}
-
 
 export interface Card {
     id: string

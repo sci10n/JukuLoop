@@ -1,152 +1,164 @@
 <script lang="ts">
     import {createEventDispatcher} from "svelte";
-    import type {Deck, Sentence} from "../types/Sentence";
+    import type {Crud, DeckMetadata} from "../db/crud";
+    import type {Sentence} from "../types/Sentence";
     import {parseJapaneseSentence, processComponents} from "../utils/conversionUtils";
-    import {stages} from "../types/Srs";
-    import {stage_name} from "../utils/srs";
+    import {cleanupInput} from "../utils/misc";
+    import {get_review_text, stages} from "../types/Srs";
     import KanjiInput from "../components/KanjiInput.svelte";
     import ColoredReading from "../components/ColoredReading.svelte";
-    import {cleanupInput} from "../utils/misc";
-    import {get_review_text} from "../types/Srs.js";
+    import {stage_name} from "../utils/srs";
     import Navigation from "../components/Navigation.svelte";
 
-    const dispatch = createEventDispatcher()
+    const dispatch = createEventDispatcher();
 
-    export let deck: Deck
-    export let sentence: Sentence
+    export let deck: DeckMetadata | null = null;
+    export let sentence: Sentence;
+    export let storage: Crud;
 
+    function updateSentence(field: string, value: string) {
+        if (field === 'raw') {
+            const cleaned = value.split("").map(cleanupInput).join("");
+            const components = parseJapaneseSentence(cleaned);
+            const { reading, furigana, optional, optionalCluster } = processComponents(components);
 
-    const updateRaw = (raw: string) => {
-        sentence.raw = raw.split("").map(it => cleanupInput(it)).join("")
-        const components = parseJapaneseSentence(raw)
-        const {reading, furigana, optional, optionalCluster} = processComponents(components);
-
-        sentence.reading = reading
-        sentence.furigana = furigana
-        sentence.optional = optional
-        sentence.optionalCluster = optionalCluster
-    }
-
-    const updateTranslation = (translation: string) => {
-        sentence.translation = translation
-    }
-
-    const updateNote = (note: string) => {
-        sentence.note = note
-    }
-
-    const updateHint = (hint: string) => {
-        sentence.hint = hint
-    }
-
-    const updateSrsStage = (stage: number) => {
-        if (!sentence.srs) {
-            return
-        }
-        sentence.srs.stage = stages[stage]
-    }
-
-    const updateSentence = (sentence: Sentence) => {
-        updateRaw(sentence.raw)
-        const loadedDecks = localStorage.getItem("decks")
-        const decks = loadedDecks ? JSON.parse(loadedDecks) : []
-
-        const deckIndex = decks.findIndex(it => it.id === deck.id)
-        const sentenceIndex = decks[deckIndex].sentences.findIndex(it => it.id === sentence.id)
-
-        if (sentenceIndex === -1) {
-            decks[deckIndex].sentences.push(sentence)
+            sentence = {
+                ...sentence,
+                raw: cleaned,
+                reading,
+                furigana,
+                optional,
+                optionalCluster
+            };
         } else {
-            decks[deckIndex].sentences[sentenceIndex] = sentence
+            sentence = { ...sentence, [field]: value };
         }
-
-        localStorage.setItem("decks", JSON.stringify(decks))
-        dispatch("edit", {deck: deck, sentence: sentence})
     }
 
+    const deleteSentence = () => {
+        if (confirm("Are you sure you want to delete this sentence?")) {
+            if (deck) {
+                storage.removeSentenceFromDeck(deck.id, sentence.id);
+            }
+            storage.deleteSentence(sentence.id);
+            dispatch("cancel");
+        }
+    }
+
+    function resetSRS() {
+        sentence.srs = {
+            ...sentence.srs!,
+            streak: 0,
+            maxStreak: 0,
+            stage: stages[0],
+            nextReview: new Date(),
+        };
+    }
+
+    function saveSentence() {
+        storage.addOrUpdateSentence(sentence);
+        if (deck) {
+            storage.addSentenceToDeck(deck.id, sentence.id);
+        }
+        dispatch("edit", { deck, sentence });
+    }
 </script>
 
-<h1>Edit</h1>
-{#if deck && sentence}
-    <div class="sentence-container">
-        <table class="deck-table">
-            <colgroup>
-                <col class="raw"/>
-                <col class="translation"/>
-                <col class="note"/>
-                <col class="hint"/>
-                <col class="srs"/>
-                <col class="actions"/>
-            </colgroup>
-            <thead>
-            <tr>
-                <th>Sentence</th>
-                <th>Translation</th>
-                <th>Notes</th>
-                <th>Hint</th>
-                <th>SRS Stage</th>
-                <th>Time until Review</th>
-                <th>Reset SSR</th>
-            </tr>
-            </thead>
-            <tbody>
-            <tr>
-                <td>
-                    <KanjiInput value={sentence.raw} on:input={e => updateRaw(e.detail)}/>
-                </td>
-                <td>
-                    <input bind:value={sentence.translation} on:input={e => updateTranslation(e.target.value)}/>
-                </td>
-                <td>
-                    <input bind:value={sentence.note} on:input={e => updateNote(e.target.value)}/>
-                </td>
-                <td>
-                    <input bind:value={sentence.hint} on:input={e => updateHint(e.target.value)}/>
-                </td>
-                <td>
-                    <select bind:value={sentence.srs.stage} on:change={e => updateSrsStage(e.target.value)}>
-                        {#each stages as stage}
-                            <option value={stage}> {stage_name(stage)} </option>
-                        {/each}
-                    </select>
-                </td>
-                <td>
-                    <p>{get_review_text(sentence.srs)}</p>
-                </td>
-                <td>
-                    <button class="red" on:click={() => {
-                        sentence.srs.streak = 0
-                        sentence.srs.maxStreak = 0
-                        sentence.srs.stage = stages[0]
-                        sentence.srs.nextReview = new Date()
-                    }
-                         }>Reset
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="5">
-                    <ColoredReading readings={sentence.reading}
-                                    furigana={sentence.furigana}
-                                    colors={sentence.optional.map(it => it ? "blue" : "black")}
-                    />
-                </td>
-            </tr>
-            </tbody>
-        </table>
+<div class="edit-container">
+    <h1>Edit Sentence</h1>
+
+    <div class="sentence-input">
+        <KanjiInput value={sentence.raw} on:input={e => updateSentence('raw', e.detail)} />
+        <ColoredReading
+            readings={sentence.reading}
+            furigana={sentence.furigana}
+            colors={sentence.optional.map(it => it ? "blue" : "black")}
+        />
     </div>
-{/if}
-<Navigation
-        view={[{to: "cancel", label: "Cancel",  active: true}, {to: "save", label: "Save", active: true}]}
-        on:navigate={(e) => {
-              const to = e.detail.to
-              if(to === "cancel") {
-                  dispatch("cancel")
-              } else if (to === "save") {
-                  updateSentence(sentence)
-              }
-            }}/>
+
+    <div class="form-grid">
+        <label>
+            Translation
+            <input bind:value={sentence.translation} on:input={e => updateSentence('translation', e.target.value)} />
+        </label>
+
+        <label>
+            Notes
+            <textarea bind:value={sentence.note} on:input={e => updateSentence('note', e.target.value)}></textarea>
+        </label>
+
+        <label>
+            Hint
+            <textarea bind:value={sentence.hint} on:input={e => updateSentence('hint', e.target.value)} />
+        </label>
+
+        <label>
+            SRS Stage
+            <select bind:value={sentence.srs.stage}>
+                {#each stages as stage}
+                    <option value={stage}>{stage_name(stage)}</option>
+                {/each}
+            </select>
+        </label>
+        <label>
+            Time until Review: {get_review_text(sentence.srs)}
+            <button class="reset-btn" on:click={resetSRS}>Reset SRS</button>
+        </label>
+        <label>
+            Delete
+            <button class="reset-btn" on:click={deleteSentence}>Delete Sentence</button>
+        </label>
+
+    </div>
+
+    <Navigation
+        view={[
+            { to: "cancel", label: "Cancel", active: true },
+            { to: "save", label: "Save", active: true }
+        ]}
+        on:navigate={e => e.detail.to === "save" ? saveSentence() : dispatch("cancel")}
+    />
+</div>
+
 <style>
-    @import "../styles/table.css";
-    @import "../styles/button.css";
+    .edit-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+
+    .sentence-input {
+        margin-bottom: 1rem;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+    }
+
+    label {
+        display: flex;
+        flex-direction: column;
+    }
+
+    input, select, textarea, button {
+        margin-top: 0.5rem;
+        padding: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    textarea {
+        height: 100px;
+    }
+
+    .reset-btn {
+        background-color: #ff4136;
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+    }
 </style>

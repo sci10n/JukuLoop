@@ -6,7 +6,7 @@
 
     export let value: string
 
-    $: if(value) {
+    $: if (value) {
         dispatch('input', value)
     }
     let ref: HTMLTextAreaElement | HTMLInputElement
@@ -28,9 +28,10 @@
     })
 </script>
 <style>
-    input {
+    textarea {
         width: 100%;
+        resize: vertical;
     }
 </style>
-<input value={value} bind:this={ref}/>
+<textarea bind:this={ref}>{value}</textarea>
 
