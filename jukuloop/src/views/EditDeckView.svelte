@@ -18,6 +18,7 @@
     $: sentences = deckMetadata && storage && storage.getSentencesForDeck(deckMetadata.id);
 
     function saveDeck() {
+        deckMetadata.sentenceIds = sentences.map(it => it.id);
         deckMetadata.name = editName;
         deckMetadata.description = editDescription;
         storage.addOrUpdateDeck(deckMetadata);
