@@ -14,7 +14,7 @@
         if (name && description) {
             const id = Math.random().toString(36).substring(7);
             const deck: DeckMetadata = { id, name, description, sentenceIds: [] };
-            storage.addDeck(deck);
+            storage.addOrUpdateDeck(deck);
             decks = storage.getDecks();
         }
     }

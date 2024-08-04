@@ -139,7 +139,7 @@
 
     .sentence-table th,
     .sentence-table td {
-        border: 1px solid #ddd;
+        border: 0;
         padding: 0.5rem;
         text-align: left;
     }
@@ -162,7 +162,6 @@
     }
 
     .reading {
-        max-width: 200px;
         overflow-wrap: break-word;
     }
 

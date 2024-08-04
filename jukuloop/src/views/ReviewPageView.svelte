@@ -5,6 +5,7 @@
     import Navigation from "../components/Navigation.svelte";
     import type {Crud, DeckMetadata} from "../db/crud";
     import type {Sentence} from "../types/Sentence";
+    import {base} from "$app/paths";
 
     const dispatch = createEventDispatcher()
 
@@ -34,6 +35,9 @@
 
 <div class="page">
     <div class="container">
+        {#if showCreateDeck}
+            <h1>No decks found. <a href="{base}/edit">Create a deck</a></h1>
+        {/if}
         {#if showDecksView }
             <div class="pick-decks-container">
                 <h1>Choose a deck</h1>
