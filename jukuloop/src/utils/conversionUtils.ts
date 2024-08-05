@@ -241,7 +241,6 @@ export const calculateCorrectness = (possibleAnswer: PossibleAnswer, referenceSe
 
     const readingMappingCorrectness: (null | boolean)[] = Array.from({length: referenceSentence.reading.length}, () => null)
     readingCorrectness.forEach((correct, index) => {
-        //console.log("Reading mapping", possibleAnswer.readingMapping)
         const readingMappingIndex = possibleAnswer.readingMapping[index]
         if(readingMappingCorrectness[readingMappingIndex] === null) {
             readingMappingCorrectness[readingMappingIndex] = correct;
@@ -249,16 +248,10 @@ export const calculateCorrectness = (possibleAnswer: PossibleAnswer, referenceSe
             readingMappingCorrectness[readingMappingIndex] = readingMappingCorrectness[readingMappingIndex] && correct
         }
     })
-    // console.log("Full reading", referenceSentence.reading)
-    // console.log("Expected reading", possibleAnswer.reading)
-    // console.log("Reading mapping", possibleAnswer.readingMapping)
-    // console.log("Reading correctness: ", readingCorrectness)
-    // console.log("Full reading correctness: ", readingMappingCorrectness)
+
     const lengthCorrect = answer.length <= possibleAnswer.reading.length
     const answerCorrect = readingMappingCorrectness.every((correct) => correct === null | correct === true)
 
-    console.log(readingCorrectness)
-    console.log(readingMappingCorrectness)
     return {
         readingCorrectness: readingMappingCorrectness,
         answerCorrect: answerCorrect && lengthCorrect
@@ -350,15 +343,5 @@ const getExpectedAnswer = (useKanji: boolean, optionalGroups: number[], sentence
     })
 
     return possibleAnswers
-    // textToUse.split("").forEach((readingPart) => {
-    //     const subSentencePar: SentencePart = {
-    //         reading: readingPart,
-    //         furigana: "",
-    //         optional: part.optional,
-    //         cluster: part.cluster
-    //     }
-    //     expectedAnswer.push(subSentencePar)
-    //     readingMapping.push(index)
-    // })
 }
 
