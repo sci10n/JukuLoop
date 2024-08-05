@@ -13,6 +13,7 @@ interface Component {
     type: 'kanji' | 'katakana' | 'plain' | 'optional' | 'punctuation' | "ignore";
     text: string;
     reading?: string;
+    alternativeReadings?: string[];
 }
 
 
@@ -23,7 +24,13 @@ export function parseJapaneseSentence(inputString: string): Component[] {
     let match;
     while ((match = regex.exec(inputString)) !== null) {
         if (match[1] && match[2]) { // Kanji with furigana
-            components.push({type: 'kanji', text: match[1], reading: match[2]});
+            const readings = match[2].split('/');
+            components.push({
+                type: 'kanji',
+                text: match[1],
+                reading: readings[0],
+                alternativeReadings: readings.length > 1 ? (readings.slice(1)) : undefined
+            });
         } else if (match[3]) { // Optional part
             components.push({type: 'optional', text: match[3]});
         } else if (match[4] && match[5]) { // Katakana with hiragana reading
@@ -37,7 +44,7 @@ export function parseJapaneseSentence(inputString: string): Component[] {
             components.push({type: 'punctuation', text: match[7]});
         }
     }
-   // console.log(components)
+    //console.log(components)
     return components;
 }
 
@@ -46,11 +53,13 @@ export function processComponents(components: Component[], includePunctuation: b
     furigana: string[],
     optional: boolean[],
     optionalCluster: number[]
+    alternativeReadings: string[][]
 } {
     const reading: string[] = [];
     const furigana: string[] = [];
     const optional: boolean[] = [];
     const optionalCluster: number[] = [];
+    const alternativeReadings: string[][] = [];
     let clusterCounter = 0;
     components.forEach((component, index) => {
         switch (component.type) {
@@ -60,6 +69,7 @@ export function processComponents(components: Component[], includePunctuation: b
                 furigana.push(component.reading!);
                 optional.push(false);
                 optionalCluster.push(-1);
+                alternativeReadings.push(component.alternativeReadings || []);
                 break;
             case 'plain':
                 const hiragana = splitHirganana(component.text)
@@ -68,12 +78,13 @@ export function processComponents(components: Component[], includePunctuation: b
                     furigana.push('');
                     optional.push(false);
                     optionalCluster.push(-1);
+                    alternativeReadings.push([]);
                 })
                 break;
             case 'optional':
                 let adjustedText = component.text
                 // This is to handle the case where the optional part is followed by a punctuation due to the regex not being able to handle it.
-                if(components[index + 1] && components[index + 1].type === 'punctuation' && components[index + 1].text === ')') {
+                if (components[index + 1] && components[index + 1].type === 'punctuation' && components[index + 1].text === ')') {
                     adjustedText = component.text + ")"
                     components[index + 1].type = "ignore"
                 }
@@ -83,6 +94,7 @@ export function processComponents(components: Component[], includePunctuation: b
                 furigana.push(...subProcessed.furigana);
                 optional.push(...subProcessed.optional.map(() => true));
                 optionalCluster.push(...subProcessed.optional.map(() => clusterCounter));
+                alternativeReadings.push(...subProcessed.alternativeReadings);
                 clusterCounter = clusterCounter + 1;
                 break;
             case 'punctuation':
@@ -91,6 +103,7 @@ export function processComponents(components: Component[], includePunctuation: b
                     furigana.push('');
                     optional.push(true);
                     optionalCluster.push(clusterCounter);
+                    alternativeReadings.push([]);
                     clusterCounter = clusterCounter + 1;
 
                 }
@@ -98,7 +111,7 @@ export function processComponents(components: Component[], includePunctuation: b
         }
     });
 
-    return {reading, furigana, optional, optionalCluster};
+    return {reading, furigana, optional, optionalCluster, alternativeReadings};
 }
 
 const splitHirganana = (input: string): string[] => {
@@ -111,6 +124,7 @@ const splitHirganana = (input: string): string[] => {
 const sentences = [
     "彼女(かのじょ)は((時々(ときどき)))公園(こうえん)で((ジョギング(jogging)))をします。",
     "((私(わたし)は))毎朝(まいあさ)((天気(てんき)が良(よ)ければ))散歩(さんぽ)をします。",
+    "三(さん/3)円(えん)"
 ]
 sentences.forEach(it => processComponents(parseJapaneseSentence(it)));
 
@@ -118,7 +132,8 @@ export interface SentencePart {
     reading: string,
     furigana: string,
     optional: boolean,
-    cluster: number
+    cluster: number,
+    alternativeReadings?: string[]
 }
 
 export interface AnswerCorrectness {
@@ -177,7 +192,7 @@ export const getAllPossibleAnswers = (useKanji: boolean, optionalGroups: number[
     const possibleAnswers: PossibleAnswer[] = []
     const optionalGroupsCombinations = getAllCombinations(optionalGroups)
     optionalGroupsCombinations.forEach((combination) => {
-        possibleAnswers.push(getExpectedAnswer(useKanji, combination, sentence))
+        getExpectedAnswer(useKanji, combination, sentence).forEach((possibleAnswer) => possibleAnswers.push(possibleAnswer))
     })
     return possibleAnswers
 }
@@ -226,8 +241,13 @@ export const calculateCorrectness = (possibleAnswer: PossibleAnswer, referenceSe
 
     const readingMappingCorrectness: (null | boolean)[] = Array.from({length: referenceSentence.reading.length}, () => null)
     readingCorrectness.forEach((correct, index) => {
+        //console.log("Reading mapping", possibleAnswer.readingMapping)
         const readingMappingIndex = possibleAnswer.readingMapping[index]
-        readingMappingCorrectness[readingMappingIndex] = correct;
+        if(readingMappingCorrectness[readingMappingIndex] === null) {
+            readingMappingCorrectness[readingMappingIndex] = correct;
+        } else {
+            readingMappingCorrectness[readingMappingIndex] = readingMappingCorrectness[readingMappingIndex] && correct
+        }
     })
     // console.log("Full reading", referenceSentence.reading)
     // console.log("Expected reading", possibleAnswer.reading)
@@ -236,16 +256,19 @@ export const calculateCorrectness = (possibleAnswer: PossibleAnswer, referenceSe
     // console.log("Full reading correctness: ", readingMappingCorrectness)
     const lengthCorrect = answer.length <= possibleAnswer.reading.length
     const answerCorrect = readingMappingCorrectness.every((correct) => correct === null | correct === true)
+
+    console.log(readingCorrectness)
+    console.log(readingMappingCorrectness)
     return {
         readingCorrectness: readingMappingCorrectness,
         answerCorrect: answerCorrect && lengthCorrect
     }
 }
 
-const getExpectedAnswer = (useKanji: boolean, optionalGroups: number[], sentence: SentencePart[]): PossibleAnswer => {
-    const expectedAnswer: SentencePart[] = []
+const getExpectedAnswer = (useKanji: boolean, optionalGroups: number[], sentence: SentencePart[]): PossibleAnswer[] => {
+    const alternativeReadings: { index: number, reading: string, readingMapping: number }[] = []
+    const expectedReading: SentencePart[] = []
     const readingMapping: number[] = []
-
     sentence.forEach((part, index) => {
         let textToUse = ""
         if (useKanji) {
@@ -260,24 +283,82 @@ const getExpectedAnswer = (useKanji: boolean, optionalGroups: number[], sentence
         if (part.optional && !optionalGroups.includes(part.cluster)) {
             return
         }
-        textToUse.split("").forEach((readingPart) => {
+        const sentencePart: SentencePart = {
+            reading: textToUse,
+            furigana: part.furigana,
+            optional: part.optional,
+            cluster: part.cluster
+        }
+        expectedReading.push(sentencePart)
+        readingMapping.push(index)
+        if (part.alternativeReadings && !useKanji) {
+            part.alternativeReadings.forEach((alternative) => {
+                alternativeReadings.push({index: index, reading: alternative, readingMapping: index})
+            })
+        }
+    })
+
+    const possibleAnswers: PossibleAnswer[] = []
+
+    const expandedDefaultAnswer = []
+    const expandedDefaultReadingMapping = []
+    expectedReading.forEach((part, index) => {
+        const readingIndex = readingMapping[index]
+        part.reading.split("").forEach((readingPart) => {
             const subSentencePar: SentencePart = {
                 reading: readingPart,
                 furigana: "",
                 optional: part.optional,
                 cluster: part.cluster
             }
-            expectedAnswer.push(subSentencePar)
-            readingMapping.push(index)
+            expandedDefaultAnswer.push(subSentencePar)
+            expandedDefaultReadingMapping.push(readingIndex)
+        })
+    })
+    possibleAnswers.push({
+        expectedAnswer: expandedDefaultAnswer,
+        readingMapping: expandedDefaultReadingMapping,
+        reading: expandedDefaultAnswer.map((part) => part.reading),
+        furigana: expandedDefaultAnswer.map((part) => part.furigana),
+        optional: expandedDefaultAnswer.map((part) => part.optional)
+    })
+
+    alternativeReadings.forEach((alternative) => {
+        const newExpectedReading = [...expectedReading]
+        newExpectedReading[alternative.index].reading = alternative.reading
+        const expandedExpectedReading = []
+        const expandedReadingMapping = []
+        newExpectedReading.forEach((part, index) => {
+            part.reading.split("").forEach((readingPart) => {
+                const subSentencePar: SentencePart = {
+                    reading: readingPart,
+                    furigana: "",
+                    optional: part.optional,
+                    cluster: part.cluster
+                }
+                expandedExpectedReading.push(subSentencePar)
+                expandedReadingMapping.push(alternative.readingMapping)
+            })
+        })
+        possibleAnswers.push({
+            expectedAnswer: expandedExpectedReading,
+            readingMapping: expandedReadingMapping,
+            reading: expandedExpectedReading.map((part) => part.reading),
+            furigana: expandedExpectedReading.map((part) => part.furigana),
+            optional: expandedExpectedReading.map((part) => part.optional)
         })
     })
 
-    return {
-        expectedAnswer: expectedAnswer,
-        readingMapping: readingMapping,
-        reading: expectedAnswer.map((part) => part.reading),
-        furigana: expectedAnswer.map((part) => part.furigana),
-        optional: expectedAnswer.map((part) => part.optional)
-    }
+    return possibleAnswers
+    // textToUse.split("").forEach((readingPart) => {
+    //     const subSentencePar: SentencePart = {
+    //         reading: readingPart,
+    //         furigana: "",
+    //         optional: part.optional,
+    //         cluster: part.cluster
+    //     }
+    //     expectedAnswer.push(subSentencePar)
+    //     readingMapping.push(index)
+    // })
 }
 

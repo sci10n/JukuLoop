@@ -24,6 +24,7 @@ export interface Sentence {
     note?: string
     hint?: string
     srs?: SRS
+    alternativeReadings?: string[][]
 }
 
 export const getParts = (sentence: Sentence): SentencePart[] => {
@@ -33,7 +34,8 @@ export const getParts = (sentence: Sentence): SentencePart[] => {
             reading: sentence.reading[i],
             furigana: sentence.furigana[i],
             optional: sentence.optional[i],
-            cluster: sentence.optionalCluster[i]
+            cluster: sentence.optionalCluster[i],
+            alternativeReadings: sentence.alternativeReadings?.[i]
         })
     }
     return parts

@@ -50,7 +50,7 @@ const toSentence = (card: CardMetadata, srs: SRS): Sentence => {
         translation: card.translation,
         hint: card.hint,
         note: card.note,
-        srs: srs
+        srs: srs,
     }
 }
 
