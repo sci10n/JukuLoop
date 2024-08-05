@@ -60,6 +60,8 @@
     }
 
     function pickSentence() {
+        selectedSentences = pick_sentences(storage.getSentencesForDeck(selectedDeck.id));
+        
         currentSentence = selectedSentences.length > 0
             ? selectedSentences[Math.floor(Math.random() * selectedSentences.length)]
             : null;
